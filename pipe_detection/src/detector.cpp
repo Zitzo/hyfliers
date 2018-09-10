@@ -13,10 +13,12 @@
 #include <opencv2/opencv.hpp>
 #include <ctime>
 #include "std_msgs/Float64.h"
-#include "geometry_msgs/Twist.h"
+#include <geometry_msgs/Twist.h>
 #include "ardrone_autonomy/Navdata.h"
 #include <math.h>
 #include <Eigen/Eigen>
+#include <Eigen/Geometry> 
+#include <geometry_msgs/PoseStamped.h>
 //#include <tf/transform_broadcaster.h>
 
 
@@ -76,8 +78,8 @@ double getOrientation(const vector<Point> &pts, vector<double> &pipeCentroid, ve
   }
   // Draw the principal components
   circle(img, cntr, 3, Scalar(255, 0, 255), 2);
-  Point p1 = cntr + 0.002 * Point(static_cast<int>(eigen_vecs[0].x * eigen_val[0]), static_cast<int>(eigen_vecs[0].y * eigen_val[0]));
-  Point p2 = cntr - 0.002 * Point(static_cast<int>(eigen_vecs[1].x * eigen_val[1]), static_cast<int>(eigen_vecs[1].y * eigen_val[1]));
+  Point p1 = cntr + 0.02 * Point(static_cast<int>(eigen_vecs[0].x * eigen_val[0]), static_cast<int>(eigen_vecs[0].y * eigen_val[0]));
+  Point p2 = cntr - 0.02 * Point(static_cast<int>(eigen_vecs[1].x * eigen_val[1]), static_cast<int>(eigen_vecs[1].y * eigen_val[1]));
   drawAxis(img, cntr, p1, Scalar(0, 255, 0), 1);
   drawAxis(img, cntr, p2, Scalar(255, 255, 0), 5);
   double angle = atan2(eigen_vecs[0].y, eigen_vecs[0].x); // orientation in radians
@@ -103,12 +105,14 @@ int const max_lowThreshold = 100;
 int ratio = 3;
 int kernel_size = 3;
 std::string window_name = "Edge Map";
-float altitude;
+float altitude,roll,pitch;
 
  
-void altitudeCallback(const ardrone_autonomy::Navdata imu)
+void IMUCallback(const ardrone_autonomy::Navdata imu)
 {
   altitude = imu.altd;
+  roll = imu.rotX;
+  pitch = imu.rotY;
 }
 
 class ImageProcessor
@@ -127,8 +131,8 @@ public:
     img_sub_ = it_.subscribe("/ardrone/bottom/image_raw", 1, &ImageProcessor::image_callback, this);
    // sub_alt_ = n.subscribe("/ardrone/navdata", 1000, altitude_Callback);
     img_pub_ = it_.advertise("/output_image", 1);
-    pipe_pub_ = n.advertise<geometry_msgs::Twist>("/pipe_pose", 1000);
-    alt_sub_ = n.subscribe("/ardrone/navdata", 1000, altitudeCallback);
+    pipe_pub_ = n.advertise<geometry_msgs::PoseStamped>("/pipe_pose", 1000);
+    alt_sub_ = n.subscribe("/ardrone/navdata", 1000, IMUCallback);
 
     //pipe_pub_ = n.advertise<geometry_msgs::Twist>("/pipe_pose", 1000);
 
@@ -192,17 +196,26 @@ public:
     // src.copyTo( dst, detected_edges);
     std::vector<rgbd::ImageObject> objects;
     // BOViL::ColorClusterSpace *ccs = BOViL::CreateHSVCS_8c(255,255,255);
-    rgbd::ColorClusterSpace *ccs = rgbd::createSingleClusteredSpace(
-        90, 130,
-        10, 70,
-        100, 180,
+
+    //gray pipe detection
+    //rgbd::ColorClusterSpace *ccs = rgbd::createSingleClusteredSpace(
+    //    90, 130,
+    //    10, 70,
+    //    100, 180,
+    //    180, 255, 255,
+    //    32);
+
+    rgbd::ColorClusterSpace *ccs = rgbd::createSingleSparseCluster(
+        {std::pair<unsigned char, unsigned char>(0,30),std::pair<unsigned char, unsigned char>(140,180)},
+        {std::pair<unsigned char, unsigned char>(50, 255)},
+        {std::pair<unsigned char, unsigned char>(50, 255)},
         180, 255, 255,
         32);
 
     rgbd::ColorClustering<uchar>(dst.data,
                                  dst.cols,
                                  dst.rows,
-                                 30000,
+                                 10000,  // minimun number of pixels detected
                                  objects,
                                  *ccs);
 
@@ -248,18 +261,26 @@ public:
       vector<double> p1;
       vector<double> centroid;
       // Find the orientation of each shape
-      double ang = getOrientation(contours[i], centroid, p1, src);
-      //Publish angle
-      geometry_msgs::Twist pipe_data; 
+      double yaw = getOrientation(contours[i], centroid, p1, src);
+      //Get quaternion
+      Eigen::Matrix3f m;
+      m = Eigen::AngleAxisf(roll*M_PI, Eigen::Vector3f::UnitX())
+      * Eigen::AngleAxisf(pitch*M_PI,  Eigen::Vector3f::UnitY())
+      * Eigen::AngleAxisf(yaw*M_PI, Eigen::Vector3f::UnitZ());
+      // transform to quaternion
+      Eigen::Quaternionf q(m);
+      // Initializaing pose
+      geometry_msgs::PoseStamped pipe_data; 
       // xi=fx*x/z+cx, yi=fy*y/z+cy
-      pipe_data.linear.x = (altitude/1000)*(pipe_center.x - mIntrinsic(0, 2)) / mIntrinsic(0, 0); // x=z*(xi-cx)/fx
-      pipe_data.linear.y = (altitude/1000)*(pipe_center.y - mIntrinsic(1, 2)) / mIntrinsic(1, 1); // y=z*(yi-cy)/fy
-      pipe_data.linear.z = altitude/1000;
-      pipe_data.angular.x = 0;
-      pipe_data.angular.y = 0;
-      pipe_data.angular.z = ang + 3.14159265/2;
+      pipe_data.pose.position.x = (altitude/1000)*(pipe_center.x - mIntrinsic(0, 2)) / mIntrinsic(0, 0); // x=z*(xi-cx)/fx
+      pipe_data.pose.position.y = (altitude/1000)*(pipe_center.y - mIntrinsic(1, 2)) / mIntrinsic(1, 1); // y=z*(yi-cy)/fy
+      pipe_data.pose.position.z = altitude/1000;
+      pipe_data.pose.orientation.x = q.x();
+      pipe_data.pose.orientation.y = q.y();
+      pipe_data.pose.orientation.z = q.z() + 3.14159265/2;
+      pipe_data.pose.orientation.w = q.w();
       pipe_pub_.publish(pipe_data);
-      float altitude = pipe_data.linear.z;
+      //float altitude = pipe_data.pose.position.z;
     }
     imshow("output1", src);
     imshow("output2", gray);
