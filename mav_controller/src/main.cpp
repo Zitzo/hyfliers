@@ -28,7 +28,9 @@ void Callback(const geometry_msgs::Twist &msg)
 	linx = msg.linear.x;
 	liny = msg.linear.y;
 	linz = msg.linear.z;
-	angX = msg.angular.z;
+	angX = msg.angular.x;
+	angY = msg.angular.y;
+	angZ = msg.angular.z;
 }
 int main(int _argc, char **_argv)
 {
@@ -56,9 +58,18 @@ int main(int _argc, char **_argv)
 	PID py(0.8, 0.0, 0.002, -5, 5, -20, 20);
 	PID pz(0.8, 0.0, 0.002, -5, 5, -20, 20);
 	PID gx(0.8, 0.0, 0.002, -5, 5, -20, 20);
+	
 	px.reference(0);
 	py.reference(0);
 	gx.reference(0);
+	
+	
+	px.enableRosInterface("/mav_controller/pid_x");
+	py.enableRosInterface("/mav_controller/pid_y");
+	pz.enableRosInterface("/mav_controller/pid_z");
+	//char enableRosInterface(std::string( "/aeroarms/mav_controller/pid_x");
+	//char enableRosInterface(std::string( "/aeroarms/mav_controller/pid_y");
+	//char enableRosInterface(std::string( "/aeroarms/mav_controller/pid_z");
 
 	if (i != 0)
 		pz.reference(i);
@@ -78,6 +89,7 @@ int main(int _argc, char **_argv)
 		float uy = py.update(liny, incT);
 		float uz = pz.update(linz, incT);
 		float ax = gx.update(angX, incT);
+		
 
 		
 
@@ -85,7 +97,8 @@ int main(int _argc, char **_argv)
 		msg.linear.x = -uy;
 		msg.linear.y = ux;
 		msg.linear.z = uz;
-		msg.angular.z = ax;
+		msg.angular.x = ax;
+		
 
 		geometry_msgs::PoseStamped msgref;
 		msgref.header.stamp = rosTime;
@@ -93,6 +106,7 @@ int main(int _argc, char **_argv)
 		msgref.pose.position.z = pz.reference();
 		msgref.pose.position.y = py.reference();
 		msgref.pose.orientation.x = gx.reference();
+		
 
 		geometry_msgs::PoseStamped msgpos;
 		msgpos.header.stamp = rosTime;
@@ -100,6 +114,7 @@ int main(int _argc, char **_argv)
 		msgpos.pose.position.z = linz;
 		msgpos.pose.position.y = liny;
 		msgpos.pose.orientation.x = angX;
+		
 
 		pub.publish(msg);
 		posepub.publish(msgpos);
