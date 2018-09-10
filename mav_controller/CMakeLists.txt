@@ -207,7 +207,7 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_executable(mav_controller src/main.cpp)
+add_executable(mav_controller src/main.cpp src/PID.cpp src/PID.h)
 
 target_include_directories(mav_controller PUBLIC ${catkin_INCLUDE_DIRS})
 target_include_directories(mav_controller PUBLIC ${OpenCV_INCLUDE_DIRS})
