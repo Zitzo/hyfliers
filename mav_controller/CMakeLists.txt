@@ -2,31 +2,26 @@ cmake_minimum_required(VERSION 2.8.3)
 project(mav_controller)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
-add_definitions(-std=c++11)
+add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  				uav_abstraction_layer
-				cv_bridge
-				image_transport
-  				argument_parser 
- 				geometry_msgs 
- 				nav_msgs
- 				std_msgs
- 				roscpp 
-  				ecl_geometry
-				rgbd_tools
+  roscpp
+  rospy
+  std_msgs
+  pcl_conversions
+  pcl_ros
+  image_transport
+  cv_bridge
+  pid_tune_gui
 )
 
-find_package(OpenCV 3 REQUIRED)
 
-catkin_package(
-  CATKIN_DEPENDS uav_abstraction_layer image_transport cv_bridge argument_parser geometry_msgs nav_msgs std_msgs roscpp ecl_geometry rgbd_tools
-)
-
+##lo tengo que añadir porque ros no encuentra opencv , se fuerza la busqueda
+find_package(OpenCV 3 REQUIRED) 
+set_target_properties(${OpenCV_LIBS} PROPERTIES MAP_IMPORTED_CONFIG_RELWITHDEBINFO RELEASE)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -46,10 +41,10 @@ catkin_package(
 ##   your messages/services/actions (e.g. std_msgs, actionlib_msgs, ...).
 ## * In the file package.xml:
 ##   * add a build_depend tag for "message_generation"
-##   * add a build_depend and a exec_depend tag for each package in MSG_DEP_SET
+##   * add a build_depend and a run_depend tag for each package in MSG_DEP_SET
 ##   * If MSG_DEP_SET isn't empty the following dependency has been pulled in
 ##     but can be declared for certainty nonetheless:
-##     * add a exec_depend tag for "message_runtime"
+##     * add a run_depend tag for "message_runtime"
 ## * In this file (CMakeLists.txt):
 ##   * add "message_generation" and every package in MSG_DEP_SET to
 ##     find_package(catkin REQUIRED COMPONENTS ...)
@@ -94,7 +89,7 @@ catkin_package(
 ## To declare and build dynamic reconfigure parameters within this
 ## package, follow these steps:
 ## * In the file package.xml:
-##   * add a build_depend and a exec_depend tag for "dynamic_reconfigure"
+##   * add a build_depend and a run_depend tag for "dynamic_reconfigure"
 ## * In this file (CMakeLists.txt):
 ##   * add "dynamic_reconfigure" to
 ##     find_package(catkin REQUIRED COMPONENTS ...)
@@ -116,7 +111,12 @@ catkin_package(
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
-
+catkin_package(
+#  INCLUDE_DIRS include
+#  LIBRARIES aruco
+#  CATKIN_DEPENDS roscpp rospy std_msgs
+#  DEPENDS system_lib
+)
 
 ###########
 ## Build ##
@@ -131,7 +131,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/pipe_detection.cpp
+#   src/${PROJECT_NAME}/aruco.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -142,7 +142,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/pipe_detection_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/aruco_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -199,18 +199,19 @@ include_directories(
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_pipe_detection.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_aruco.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+##añadimos el ejecutable video_capture
+add_executable(aruco src/codigoaruco.cpp src/PID.cpp src/PID.h )
+ ##incluir  directorios y librerias
+target_include_directories(aruco PUBLIC ${catkin_INCLUDE_DIRS})
+target_link_libraries(aruco ${catkin_LIBRARIES} ) 
 
-add_executable(mav_controller src/main.cpp)
-
-target_include_directories(mav_controller PUBLIC ${catkin_INCLUDE_DIRS})
-target_include_directories(mav_controller PUBLIC ${OpenCV_INCLUDE_DIRS})
-
-target_link_libraries(mav_controller ${catkin_LIBRARIES} rgbd_tools)
-target_link_libraries(mav_controller ${OpenCV_LIBRARIES} )
+##incluir directorio y librerias de opencv porqe ros no las detecta
+target_include_directories(aruco PUBLIC ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(aruco LINK_PUBLIC ${OpenCV_LIBS})

@@ -17,7 +17,7 @@ IF(NOT DEFINED CMAKE_BUILD_TYPE)
 ENDIF(NOT DEFINED CMAKE_BUILD_TYPE)
 
 ## Load PCL
-find_package(PCL 1.8 QUIET REQUIRED)
+find_package(PCL 1.7 QUIET REQUIRED)
 if(${PCL_FOUND} AND ${VTK_FOUND} AND ${Boost_FOUND} AND ${FLANN_FOUND} STREQUAL "TRUE")
 	MESSAGE( STATUS "Adding properly PCL and its dependencies")
 	add_definitions(-DENABLE_PCL)
