@@ -78,8 +78,8 @@ double getOrientation(const vector<Point> &pts, vector<double> &pipeCentroid, ve
   }
   // Draw the principal components
   circle(img, cntr, 3, Scalar(255, 0, 255), 2);
-  Point p1 = cntr + 0.002 * Point(static_cast<int>(eigen_vecs[0].x * eigen_val[0]), static_cast<int>(eigen_vecs[0].y * eigen_val[0]));
-  Point p2 = cntr - 0.002 * Point(static_cast<int>(eigen_vecs[1].x * eigen_val[1]), static_cast<int>(eigen_vecs[1].y * eigen_val[1]));
+  Point p1 = cntr + 0.02 * Point(static_cast<int>(eigen_vecs[0].x * eigen_val[0]), static_cast<int>(eigen_vecs[0].y * eigen_val[0]));
+  Point p2 = cntr - 0.02 * Point(static_cast<int>(eigen_vecs[1].x * eigen_val[1]), static_cast<int>(eigen_vecs[1].y * eigen_val[1]));
   drawAxis(img, cntr, p1, Scalar(0, 255, 0), 1);
   drawAxis(img, cntr, p2, Scalar(255, 255, 0), 5);
   double angle = atan2(eigen_vecs[0].y, eigen_vecs[0].x); // orientation in radians
@@ -206,7 +206,7 @@ public:
     //    32);
 
     rgbd::ColorClusterSpace *ccs = rgbd::createSingleSparseCluster(
-        {std::pair<unsigned char, unsigned char>(0,10),std::pair<unsigned char, unsigned char>(160,179)},
+        {std::pair<unsigned char, unsigned char>(0,30),std::pair<unsigned char, unsigned char>(140,180)},
         {std::pair<unsigned char, unsigned char>(50, 255)},
         {std::pair<unsigned char, unsigned char>(50, 255)},
         180, 255, 255,
@@ -215,7 +215,7 @@ public:
     rgbd::ColorClustering<uchar>(dst.data,
                                  dst.cols,
                                  dst.rows,
-                                 30000,
+                                 10000,  // minimun number of pixels detected
                                  objects,
                                  *ccs);
 
