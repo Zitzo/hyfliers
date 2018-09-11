@@ -39,9 +39,9 @@ int main(int _argc, char **_argv)
 	ros::NodeHandle nh;
 
 	ros::Subscriber sub1 = nh.subscribe("/pipe_pose", 1000, Callback);
-	ros::Publisher pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
-	ros::Publisher posepub = nh.advertise<geometry_msgs::PoseStamped>("/aruco/pos", 1000);
-	ros::Publisher refpub = nh.advertise<geometry_msgs::PoseStamped>("/reference", 1000);
+	ros::Publisher pub = nh.advertise<geometry_msgs::Twist>("/mav_controller/cmd_vel", 1000);
+	ros::Publisher posepub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 1000);
+	ros::Publisher refpub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 1000);
 
 	ros::AsyncSpinner spinner(4);
 	spinner.start();

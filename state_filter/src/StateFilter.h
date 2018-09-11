@@ -15,17 +15,17 @@ protected:
   }
   void updateHZk()
   {
-    float fx = 798.936495;
-    float fy = 800.331389;
-    float Cx = 327.376758;
-    float Cy = 258.200534;
+    float fx = 726.429011;
+    float fy = 721.683494;
+    float Cx = 283.809411;
+    float Cy = 209.109682;
     mHZk << (fx * mXfk[0] / mXfk[2]) + Cx, (fy * mXfk[1] / mXfk[2]) + Cy, 1,
         (fx * mXfk[3] / mXfk[5]) + Cx, (fy * mXfk[4] / mXfk[5]) + Cy, 1;
   }
   void updateJh()
   {
-    float fx = 798.936495;
-    float fy = 800.331389;
+    float fx = 726.429011;
+    float fy = 721.683494;
     mJh << fx / mXfk[0], 0, -fx * mXfk[0] / (mXfk[2] * mXfk[2]), 0, 0, 0,
         0, fy / mXfk[1], -fy * mXfk[1] / (mXfk[2] * mXfk[2]), 0, 0, 0,
         0, 0, 1, 0, 0, 0,
@@ -35,17 +35,9 @@ protected:
   }
 };
 
-void
-centroidCallback(const ardrone_autonomy::Navdata imu){
-
-};
-void p1Callback(const ardrone_autonomy::Navdata imu){
-
-};
-void imuCallback(const ardrone_autonomy::Navdata imu){
-
-};
-
+void centroidCallback(const ardrone_autonomy::Navdata imu){};
+void p1Callback(const ardrone_autonomy::Navdata imu){};
+void imuCallback(const ardrone_autonomy::Navdata imu){};
 class StateFilter
 {
 public:
@@ -63,7 +55,7 @@ public:
       computeKalmanFilter();
     }
   };
-
+  
   bool computeKalmanFilter()
   {
     std::cout << "Initializating Extended Kalman Filter" << std::endl;
