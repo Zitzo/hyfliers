@@ -111,6 +111,7 @@ float altitude,roll,pitch;
 void IMUCallback(const ardrone_autonomy::Navdata imu)
 {
   altitude = imu.altd;
+  //altitude = 1000;  // for testing
   roll = imu.rotX;
   pitch = imu.rotY;
 }
@@ -275,10 +276,14 @@ public:
       pipe_data.pose.position.x = (altitude/1000)*(pipe_center.x - mIntrinsic(0, 2)) / mIntrinsic(0, 0); // x=z*(xi-cx)/fx
       pipe_data.pose.position.y = (altitude/1000)*(pipe_center.y - mIntrinsic(1, 2)) / mIntrinsic(1, 1); // y=z*(yi-cy)/fy
       pipe_data.pose.position.z = altitude/1000;
-      pipe_data.pose.orientation.x = q.x();
-      pipe_data.pose.orientation.y = q.y();
-      pipe_data.pose.orientation.z = q.z() + 3.14159265/2;
-      pipe_data.pose.orientation.w = q.w();
+      //pipe_data.pose.orientation.x = q.x();
+      //pipe_data.pose.orientation.y = q.y();
+      //pipe_data.pose.orientation.z = q.z() + 3.14159265/2;
+      //pipe_data.pose.orientation.w = q.w();
+      pipe_data.pose.orientation.x = 0;
+      pipe_data.pose.orientation.y = 0;
+      pipe_data.pose.orientation.z = yaw + 3.14159265/2;
+      pipe_data.pose.orientation.w = 0;
       pipe_pub_.publish(pipe_data);
       //float altitude = pipe_data.pose.position.z;
     }
