@@ -38,7 +38,7 @@ int main(int _argc, char **_argv)
 	ros::NodeHandle nh;
 
 	ros::Subscriber sub1 = nh.subscribe("/pipe_pose", 1000, Callback);
-	ros::Publisher pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
+	ros::Publisher pub = nh.advertise<geometry_msgs::Twist>(nh.resolveName("cmd_vel"), 1);
 	ros::Publisher posepub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 1000);
 	ros::Publisher refpub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 1000);
 
@@ -76,7 +76,7 @@ int main(int _argc, char **_argv)
 		auto t1 = chrono::steady_clock::now();
 		auto rosTime = ros::Time::now();
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() / 1000.0f;
 		std::cout << incT << std::endl;
 		t0 = t1;
@@ -90,6 +90,9 @@ int main(int _argc, char **_argv)
 		msg.linear.y = ux;
 		msg.linear.z = uz;
 		msg.angular.z = az;
+		// Hovering deactivated
+		msg.angular.x = 1;
+		msg.angular.y = 1;
 
 		geometry_msgs::PoseStamped msgref;
 		msgref.header.stamp = rosTime;
