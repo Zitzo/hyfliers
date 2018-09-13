@@ -231,8 +231,8 @@ public:
           ob.height());
       cv::rectangle(display, bb, cv::Scalar(0, 255, 0), 2);
     }
-    imshow(window_name, dst);
-    imshow(window_name + "_res", display);
+    //imshow(window_name, dst);
+    //imshow(window_name + "_res", display);
     cv::waitKey(3);
 
     //Publish image
@@ -288,8 +288,8 @@ public:
       //float altitude = pipe_data.pose.position.z;
     }
     imshow("output1", src);
-    imshow("output2", gray);
-    imshow("output3", bw);
+    //imshow("output2", gray);
+    //imshow("output3", bw);
     t3 = clock();
     double time1 = (double(t1 - t0) / CLOCKS_PER_SEC);
     cout << "Execution Time Bovil: " << time1 << endl;
