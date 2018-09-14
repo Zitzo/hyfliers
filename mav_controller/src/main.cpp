@@ -16,27 +16,20 @@
 #include <thread>
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/Point.h"
-#include "ardrone_autonomy/Navdata.h"
 
 using namespace cv;
 using namespace pcl;
 using namespace std;
 cv_bridge::CvImagePtr cv_ptr;
-float linx=0, liny=0, linz=0,  angZ=0;
+float linx=0, liny=0, linz=0, angZ=0;
 
 void Callback(const geometry_msgs::PoseStamped &msg)
 {
 	linx = msg.pose.position.x;
 	liny = msg.pose.position.y;
-	//linz = msg.pose.position.z;
+	linz = msg.pose.position.z;
 	angZ = msg.pose.orientation.z;
 	
-}
-
-void IMUCallback(const ardrone_autonomy::Navdata imu)
-{
-  linz = imu.altd/1000;
- 
 }
 int main(int _argc, char **_argv)
 {
@@ -45,12 +38,10 @@ int main(int _argc, char **_argv)
 	ros::NodeHandle nh;
 
 	ros::Subscriber sub1 = nh.subscribe("/pipe_pose", 1000, Callback);
-	ros::Subscriber alt_sub = nh.subscribe("/ardrone/navdata", 1000, IMUCallback);
 	ros::Publisher pub = nh.advertise<geometry_msgs::Twist>(nh.resolveName("cmd_vel"), 1);
 	ros::Publisher posepub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 1000);
 	ros::Publisher refpub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 1000);
-	ros::Publisher pub1 = nh.advertise<geometry_msgs::Twist>(nh.resolveName("mav_controller/cmd_vel"), 1);
-	
+
 	ros::AsyncSpinner spinner(4);
 	spinner.start();
 
@@ -87,7 +78,7 @@ int main(int _argc, char **_argv)
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() / 1000.0f;
-		std::cout << incT << std::endl;
+		//std::cout << incT << std::endl;
 		t0 = t1;
 		float ux = px.update(linx, incT);
 		float uy = py.update(liny, incT);
@@ -102,12 +93,6 @@ int main(int _argc, char **_argv)
 		// Hovering deactivated
 		msg.angular.x = 1;
 		msg.angular.y = 1;
-
-		geometry_msgs::Twist msg1;
-		msg.linear.x = uy;
-		msg.linear.y = ux;
-		msg.linear.z = uz;
-		msg.angular.z = az;
 
 		geometry_msgs::PoseStamped msgref;
 		msgref.header.stamp = rosTime;
@@ -124,7 +109,6 @@ int main(int _argc, char **_argv)
 		msgpos.pose.orientation.z = angZ;
 
 		pub.publish(msg);
-		pub.publish(msg1);
 		posepub.publish(msgpos);
 		refpub.publish(msgref);
 	}
