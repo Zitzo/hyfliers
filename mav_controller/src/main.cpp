@@ -16,21 +16,36 @@
 #include <thread>
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/Point.h"
+#include "ardrone_autonomy/Navdata.h" 
 
 using namespace cv;
 using namespace pcl;
 using namespace std;
 cv_bridge::CvImagePtr cv_ptr;
 float linx=0, liny=0, linz=0, angZ=0;
+int velCount,velCount100ms;
 
 void Callback(const geometry_msgs::PoseStamped &msg)
 {
 	linx = msg.pose.position.x;
 	liny = msg.pose.position.y;
-	linz = msg.pose.position.z;
+	//linz = msg.pose.position.z;
 	angZ = msg.pose.orientation.z;
 	
 }
+
+void IMUCallback(const ardrone_autonomy::Navdata imu) 
+{ 
+  linz = imu.altd; 
+  linz=linz/1000;
+} 
+
+void VelCallback(const geometry_msgs::TwistConstPtr vel)
+{
+    velCount++;
+    velCount100ms++;
+}
+
 int main(int _argc, char **_argv)
 {
 
@@ -38,9 +53,11 @@ int main(int _argc, char **_argv)
 	ros::NodeHandle nh;
 
 	ros::Subscriber sub1 = nh.subscribe("/pipe_pose", 1000, Callback);
-	ros::Publisher pub = nh.advertise<geometry_msgs::Twist>(nh.resolveName("cmd_vel"), 1);
-	ros::Publisher posepub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 1000);
-	ros::Publisher refpub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 1000);
+	ros::Subscriber alt_sub = nh.subscribe("/ardrone/navdata", 1000, IMUCallback); 
+	ros::Subscriber vel_sub	= nh.subscribe(nh.resolveName("cmd_vel"),50, VelCallback);
+	ros::Publisher vel_pub = nh.advertise<geometry_msgs::Twist>(nh.resolveName("cmd_vel"), 1);
+	ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 1000);
+	ros::Publisher ref_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 1000);
 
 	ros::AsyncSpinner spinner(4);
 	spinner.start();
@@ -108,9 +125,9 @@ int main(int _argc, char **_argv)
 		msgpos.pose.position.y = linx;
 		msgpos.pose.orientation.z = angZ;
 
-		pub.publish(msg);
-		posepub.publish(msgpos);
-		refpub.publish(msgref);
+		vel_pub.publish(msg);
+		pose_pub.publish(msgpos);
+		ref_pub.publish(msgref);
 	}
 	// return (0);
 }
