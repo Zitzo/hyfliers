@@ -53,10 +53,10 @@ int main(int _argc, char **_argv)
 	Mat cameraMatrix = (Mat1d(3, 3) << 726.429011, 0.000000, 283.809411, 0.000000, 721.683494, 209.109682, 0.000000, 0.000000, 1.000000);
 	Mat distCoeffs = (Mat1d(1, 5) << -0.178842, 0.660284, -0.005134, -0.005166, 0.000000);
 
-	PID px(1.7, 0.05, 0.0, -1, 1, -20, 20);
-	PID py(1.5, 0.05, 0.0, -1, 1, -20, 20);
-	PID pz(1.3, 0.05, 0.0, -1, 1, -20, 20);
-	PID gz(1.5, 0.05, 0.0, -1, 1, -20, 20);
+	PID px(1.7, 0.0, 0.0, -0.5, 0.5, -20, 20);
+	PID py(1.5, 0.0, 0.0, -0.5, 0.5, -20, 20);
+	PID pz(1.3, 0.0, 0.0, -0.5, 0.5, -20, 20);
+	PID gz(1.5, 0.0, 0.0, -0.5, 0.5, -20, 20);
 
 	px.reference(0);
 	py.reference(0);
@@ -84,7 +84,7 @@ int main(int _argc, char **_argv)
 		float uy = py.update(liny, incT);
 		float uz = pz.update(linz, incT);
 		float az = gz.update(angZ, incT);
-
+		std:: cout << uz;
 		geometry_msgs::Twist msg;
 		msg.linear.x = uy;
 		msg.linear.y = ux;
