@@ -17,14 +17,14 @@ find_package(catkin REQUIRED COMPONENTS
  				nav_msgs
  				std_msgs
  				roscpp 
-  				ecl_geometry
+
 				rgbd_tools
 )
 
 find_package(OpenCV 3 REQUIRED)
 
 catkin_package(
-  CATKIN_DEPENDS uav_abstraction_layer image_transport cv_bridge argument_parser geometry_msgs nav_msgs std_msgs roscpp ecl_geometry rgbd_tools
+  CATKIN_DEPENDS uav_abstraction_layer image_transport cv_bridge argument_parser geometry_msgs nav_msgs std_msgs roscpp  rgbd_tools
 )
 
 ## System dependencies are found with CMake's conventions
