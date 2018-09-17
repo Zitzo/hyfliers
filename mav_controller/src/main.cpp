@@ -23,6 +23,8 @@ using namespace pcl;
 using namespace std;
 cv_bridge::CvImagePtr cv_ptr;
 float linx = 0, liny = 0, linz = 0, angZ = 0;
+float batteryPercent;
+unsigned int state;
 int velCount, velCount100ms;
 
 void Callback(const geometry_msgs::PoseStamped &msg)
@@ -37,6 +39,8 @@ void IMUCallback(const ardrone_autonomy::Navdata imu)
 {
 	linz = imu.altd;
 	linz = linz / 1000;
+	batteryPercent = imu.batteryPercent;
+	state = imu.state;
 }
 
 void VelCallback(const geometry_msgs::TwistConstPtr vel)
@@ -94,7 +98,6 @@ int main(int _argc, char **_argv)
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() / 1000.0f;
-		//std::cout << incT << std::endl;
 		t0 = t1;
 		float ux = px.update(linx, incT);
 		float uy = py.update(liny, incT);
@@ -110,8 +113,8 @@ int main(int _argc, char **_argv)
 		msg.angular.x = 0;
 		msg.angular.y = 0;
 
-		std::cout << " cmd_vel: x= " << std::fixed << msg.linear.x << "  y= " << msg.linear.y << "  z= " << msg.linear.z;
-		std::cout << "  pitch= " << msg.angular.x << "  roll= " << msg.angular.y << "  yaw= " << msg.angular.z << std::endl;
+		std::cout << std::fixed << " Battery percent: " << batteryPercent << std::endl;
+		std::cout << std::fixed << " ARDrone state: " << state << std::endl;
 
 		geometry_msgs::PoseStamped msgref;
 		msgref.header.stamp = rosTime;
