@@ -34,7 +34,7 @@ int main(int _argc, char **_argv)
  	while (ros::ok()) 
  	{
 		double time_start=(double)ros::Time::now().toSec();
-		while ((double)ros::Time::now().toSec()< time_start+5.0) /* Send command for five seconds*/
+		while ((double)ros::Time::now().toSec()< time_start+2.0) /* Send command for five seconds*/
 		{ 
 			pub_takeoff.publish(emp_msg); /* launches the drone */
 			ros::spinOnce();

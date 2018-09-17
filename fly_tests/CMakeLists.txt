@@ -224,3 +224,12 @@ target_link_libraries(upright ${catkin_LIBRARIES} )
 ##incluir directorio y librerias de opencv porqe ros no las detecta
 target_include_directories(upright PUBLIC ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(upright LINK_PUBLIC ${OpenCV_LIBS})
+
+add_executable(land src/land.cpp )
+ ##incluir  directorios y librerias
+target_include_directories(land PUBLIC ${catkin_INCLUDE_DIRS})
+target_link_libraries(land ${catkin_LIBRARIES} ) 
+
+##incluir directorio y librerias de opencv porqe ros no las detecta
+target_include_directories(land PUBLIC ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(land LINK_PUBLIC ${OpenCV_LIBS})
