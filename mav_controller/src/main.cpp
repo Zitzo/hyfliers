@@ -16,14 +16,14 @@
 #include <thread>
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/Point.h"
-#include "ardrone_autonomy/Navdata.h" 
+#include "ardrone_autonomy/Navdata.h"
 
 using namespace cv;
 using namespace pcl;
 using namespace std;
 cv_bridge::CvImagePtr cv_ptr;
-float linx=0, liny=0, linz=0, angZ=0;
-int velCount,velCount100ms;
+float linx = 0, liny = 0, linz = 0, angZ = 0;
+int velCount, velCount100ms;
 
 void Callback(const geometry_msgs::PoseStamped &msg)
 {
@@ -31,30 +31,30 @@ void Callback(const geometry_msgs::PoseStamped &msg)
 	liny = msg.pose.position.y;
 	//linz = msg.pose.position.z;
 	angZ = msg.pose.orientation.z;
-	
 }
 
-void IMUCallback(const ardrone_autonomy::Navdata imu) 
-{ 
-  linz = imu.altd; 
-  linz=linz/1000;
-} 
+void IMUCallback(const ardrone_autonomy::Navdata imu)
+{
+	linz = imu.altd;
+	linz = linz / 1000;
+}
 
 void VelCallback(const geometry_msgs::TwistConstPtr vel)
 {
-    velCount++;
-    velCount100ms++;
+	velCount++;
+	velCount100ms++;
 }
 
 int main(int _argc, char **_argv)
 {
 
-	ros::init(_argc, _argv, "publish_velocity");
+	ros::init(_argc, _argv, "MAV_Controller");
 	ros::NodeHandle nh;
+	ros::Rate loop_rate(50);
 
 	ros::Subscriber sub1 = nh.subscribe("/pipe_pose", 10, Callback);
-	ros::Subscriber alt_sub = nh.subscribe("/ardrone/navdata", 10, IMUCallback); 
-	ros::Subscriber vel_sub	= nh.subscribe(nh.resolveName("cmd_vel"),50, VelCallback);
+	ros::Subscriber alt_sub = nh.subscribe("/ardrone/navdata", 10, IMUCallback);
+	ros::Subscriber vel_sub = nh.subscribe(nh.resolveName("cmd_vel"), 50, VelCallback);
 	ros::Publisher vel_pub = nh.advertise<geometry_msgs::Twist>(nh.resolveName("cmd_vel"), 1);
 	ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 5);
 	ros::Publisher ref_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 5);
@@ -89,7 +89,6 @@ int main(int _argc, char **_argv)
 	auto t0 = chrono::steady_clock::now();
 	while (ros::ok())
 	{
-
 		auto t1 = chrono::steady_clock::now();
 		auto rosTime = ros::Time::now();
 
@@ -101,7 +100,7 @@ int main(int _argc, char **_argv)
 		float uy = py.update(liny, incT);
 		float uz = pz.update(linz, incT);
 		float az = gz.update(angZ, incT);
-		std:: cout << uz;
+
 		geometry_msgs::Twist msg;
 		msg.linear.x = uy;
 		msg.linear.y = ux;
@@ -131,6 +130,9 @@ int main(int _argc, char **_argv)
 		vel_pub.publish(msg);
 		pose_pub.publish(msgpos);
 		ref_pub.publish(msgref);
+
+		ros::spinOnce();
+		loop_rate.sleep();
 	}
 	// return (0);
 }
