@@ -87,8 +87,8 @@ int main(int argc, char** argv)
 		
 		else
 		{	
-			//pub_twist.publish(twist_msg_pshover);
-			pub_twist.publish(twist_msg_hover);
+			pub_twist.publish(twist_msg_pshover);
+			//pub_twist.publish(twist_msg);
 			ROS_INFO("Flying");
 		}//fly according to desired twist
 
