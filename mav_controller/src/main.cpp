@@ -52,12 +52,12 @@ int main(int _argc, char **_argv)
 	ros::init(_argc, _argv, "publish_velocity");
 	ros::NodeHandle nh;
 
-	ros::Subscriber sub1 = nh.subscribe("/pipe_pose", 1000, Callback);
-	ros::Subscriber alt_sub = nh.subscribe("/ardrone/navdata", 1000, IMUCallback); 
+	ros::Subscriber sub1 = nh.subscribe("/pipe_pose", 10, Callback);
+	ros::Subscriber alt_sub = nh.subscribe("/ardrone/navdata", 10, IMUCallback); 
 	ros::Subscriber vel_sub	= nh.subscribe(nh.resolveName("cmd_vel"),50, VelCallback);
 	ros::Publisher vel_pub = nh.advertise<geometry_msgs::Twist>(nh.resolveName("cmd_vel"), 1);
-	ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 1000);
-	ros::Publisher ref_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 1000);
+	ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 5);
+	ros::Publisher ref_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 5);
 
 	ros::AsyncSpinner spinner(4);
 	spinner.start();
@@ -108,8 +108,11 @@ int main(int _argc, char **_argv)
 		msg.linear.z = uz;
 		msg.angular.z = az;
 		// Hovering deactivated
-		msg.angular.x = 1;
-		msg.angular.y = 1;
+		msg.angular.x = 0;
+		msg.angular.y = 0;
+
+		std::cout << " cmd_vel: x= " << std::fixed << msg.linear.x << "  y= " << msg.linear.y << "  z= " << msg.linear.z;
+		std::cout << "  pitch= " << msg.angular.x << "  roll= " << msg.angular.y << "  yaw= " << msg.angular.z << std::endl;
 
 		geometry_msgs::PoseStamped msgref;
 		msgref.header.stamp = rosTime;
