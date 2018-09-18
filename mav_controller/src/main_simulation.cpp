@@ -20,12 +20,16 @@
 #include <uav_abstraction_layer/ual.h>
 #include "std_msgs/Float64.h"
 
+#include <thread>
+
 using namespace cv;
 using namespace pcl;
 using namespace std;
 cv_bridge::CvImagePtr cv_ptr;
 float linx=0, liny=0, linz=0, angZ=0;
 int velCount,velCount100ms;
+float reference_z = 2;
+
 
 void Callback(const geometry_msgs::PoseStamped &msg)
 {
@@ -76,6 +80,7 @@ int main(int _argc, char **_argv)
     ual.goToWaypoint(waypoint);
     std::cout << "Arrived!" << std::endl;
 
+
     // UAV in position
 
     // Topics Init
@@ -92,10 +97,6 @@ int main(int _argc, char **_argv)
 	ros::AsyncSpinner spinner(4);
 	spinner.start();
 
-	float i;
-	std::cout << "enter z altitude: ";
-	std::cin >> i;
-
 	cv::Mat frame;
 	Mat cameraMatrix = (Mat1d(3, 3) << 726.429011, 0.000000, 283.809411, 0.000000, 721.683494, 209.109682, 0.000000, 0.000000, 1.000000);
 	Mat distCoeffs = (Mat1d(1, 5) << -0.178842, 0.660284, -0.005134, -0.005166, 0.000000);
@@ -108,13 +109,21 @@ int main(int _argc, char **_argv)
 	px.reference(0);
 	py.reference(0);
 	gz.reference(0);
+	pz.reference(reference_z);
 
 	px.enableRosInterface("/mav_controller/pid_x");
 	py.enableRosInterface("/mav_controller/pid_y");
 	pz.enableRosInterface("/mav_controller/pid_z");
 
-	if (i != 0)
-		pz.reference(i);
+	std::thread zRefThread(
+		[&](){
+			for(;;){
+				std::cout << "Set Z reference: ";
+				std::cin >> reference_z;
+				pz.reference(reference_z);
+			}
+		}
+	);
 
 	auto t0 = chrono::steady_clock::now();
 	while (ros::ok())
