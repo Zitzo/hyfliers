@@ -102,10 +102,11 @@ int main(int _argc, char **_argv)
 	pz.enableRosInterface("/mav_controller/pid_z");
 
 	if (i != 0)
+	{
 		pz.reference(i);
-
+	}
 	bool fly = true;
-	
+
 	std::thread keyboard([&]() {
 		int input;
 		for (;;)
@@ -113,11 +114,13 @@ int main(int _argc, char **_argv)
 			std::cout << "Type 66 to quit: ";
 			std::cin >> input;
 			std::cout << std::endl;
-			if(input==66){
+			if (input == 66)
+			{
 				std::cout << "66 pressed ending test" << std::endl;
-				fly=false;
+				fly = false;
 			}
-			else{
+			else
+			{
 				std::cout << "66 not pressed" << std::endl;
 			}
 		}
@@ -152,11 +155,14 @@ int main(int _argc, char **_argv)
 			msg.linear.z = uz;
 			msg.angular.z = 0; //az;
 			// Hovering deactivated
-			//msg.angular.x = 1;
-			//msg.angular.y = 1;
-
-			std::cout << std::fixed << " Battery percent: " << batteryPercent << std::endl;
-			std::cout << std::fixed << " ARDrone state: " << state << std::endl;
+			msg.angular.x = 1;
+			msg.angular.y = 1;
+			
+			// if ()
+			// {
+			// 	std::cout << std::fixed << " Battery percent: " << batteryPercent << std::endl;
+			// }
+			//std::cout << std::fixed << " ARDrone state: " << state << std::endl;
 
 			geometry_msgs::PoseStamped msgref;
 			msgref.header.stamp = rosTime;
@@ -179,10 +185,11 @@ int main(int _argc, char **_argv)
 		ros::spinOnce();
 		loop_rate.sleep();
 	}
-	while (ros::ok()) {
+	while (ros::ok())
+	{
 		ROS_INFO("ARdrone Landing");
-		double time_start=(double)ros::Time::now().toSec();
-		while ((double)ros::Time::now().toSec()< time_start+2.0)
+		double time_start = (double)ros::Time::now().toSec();
+		while ((double)ros::Time::now().toSec() < time_start + 2.0)
 		{
 			pub_empty.publish(emp_msg); //launches the drone
 			ros::spinOnce();
@@ -190,6 +197,6 @@ int main(int _argc, char **_argv)
 		}
 		ROS_INFO("ARdrone landed");
 		exit(0);
-	}//ros::ok
-	// return (0);
+	} //ros::ok
+	  // return (0);
 }
