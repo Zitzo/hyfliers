@@ -48,6 +48,7 @@ void VelCallback(const geometry_msgs::TwistConstPtr vel)
 	velCount++;
 	velCount100ms++;
 }
+//nuevo
 
 int main(int _argc, char **_argv)
 {
@@ -65,6 +66,14 @@ int main(int _argc, char **_argv)
 
 	ros::AsyncSpinner spinner(4);
 	spinner.start();
+	////nuevo
+	geometry_msgs::Twist twist_msg_pshover;
+	twist_msg_pshover.linear.x = 0.03; // lowest value for psudo hover to work
+	twist_msg_pshover.linear.y = 0.03;
+	twist_msg_pshover.linear.z = 0.0;
+	twist_msg_pshover.angular.x = 0.0;
+	twist_msg_pshover.angular.y = 0.0;
+	twist_msg_pshover.angular.z = 0.03;
 
 	float i;
 	std::cout << "enter z altitude: ";
@@ -74,10 +83,10 @@ int main(int _argc, char **_argv)
 	Mat cameraMatrix = (Mat1d(3, 3) << 726.429011, 0.000000, 283.809411, 0.000000, 721.683494, 209.109682, 0.000000, 0.000000, 1.000000);
 	Mat distCoeffs = (Mat1d(1, 5) << -0.178842, 0.660284, -0.005134, -0.005166, 0.000000);
 
-	PID px(0.05, 0.0, 0.0, -0.5, 0.5, -20, 20);
-	PID py(0.05, 0.0, 0.0, -0.5, 0.5, -20, 20);
-	PID pz(0.1, 0.0, 0.0, -0.5, 0.5, -20, 20);
-	PID gz(0.05, 0.0, 0.0, -0.5, 0.5, -20, 20);
+	PID px(0.0, 0.0, 0.0, -0.5, 0.5, -20, 20);
+	PID py(0.0, 0.0, 0.0, -0.5, 0.5, -20, 20);
+	PID pz(1.5, 0.0, 0.0, -0.5, 0.5, -20, 20);
+	PID gz(0.0, 0.0, 0.0, -0.5, 0.5, -20, 20);
 
 	px.reference(0);
 	py.reference(0);
@@ -93,47 +102,56 @@ int main(int _argc, char **_argv)
 	auto t0 = chrono::steady_clock::now();
 	while (ros::ok())
 	{
-		auto t1 = chrono::steady_clock::now();
-		auto rosTime = ros::Time::now();
+		//nuevo
+		if (0)
+		{
+			vel_pub.publish(twist_msg_pshover);
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-		float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() / 1000.0f;
-		t0 = t1;
-		float ux = px.update(linx, incT);
-		float uy = py.update(liny, incT);
-		float uz = pz.update(linz, incT);
-		float az = gz.update(angZ, incT);
-		
-		geometry_msgs::Twist msg;
-		msg.linear.x = uy;
-		msg.linear.y = ux;
-		msg.linear.z = uz;
-		msg.angular.z = az;
-		// Hovering deactivated
-		msg.angular.x = 0;
-		msg.angular.y = 0;
+			ROS_INFO("Flying");
+		} //fl
+		else
+		{
+			auto t1 = chrono::steady_clock::now();
+			auto rosTime = ros::Time::now();
 
-		std::cout << std::fixed << " Battery percent: " << batteryPercent << std::endl;
-		std::cout << std::fixed << " ARDrone state: " << state << std::endl;
+			//std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() / 1000.0f;
+			t0 = t1;
+			float ux = px.update(linx, incT);
+			float uy = py.update(liny, incT);
+			float uz = pz.update(linz, incT);
+			float az = gz.update(angZ, incT);
 
-		geometry_msgs::PoseStamped msgref;
-		msgref.header.stamp = rosTime;
-		msgref.pose.position.x = px.reference();
-		msgref.pose.position.z = pz.reference();
-		msgref.pose.position.y = py.reference();
-		msgref.pose.orientation.x = gz.reference();
+			geometry_msgs::Twist msg;
+			msg.linear.x = 0.0; //uy;
+			msg.linear.y = 0.0; //ux;
+			msg.linear.z = uz;
+			msg.angular.z = 0; //az;
+			// Hovering deactivated
+			//msg.angular.x = 1;
+			//msg.angular.y = 1;
 
-		geometry_msgs::PoseStamped msgpos;
-		msgpos.header.stamp = rosTime;
-		msgpos.pose.position.x = -liny;
-		msgpos.pose.position.z = linz;
-		msgpos.pose.position.y = linx;
-		msgpos.pose.orientation.z = angZ;
+			std::cout << std::fixed << " Battery percent: " << batteryPercent << std::endl;
+			std::cout << std::fixed << " ARDrone state: " << state << std::endl;
 
-		vel_pub.publish(msg);
-		pose_pub.publish(msgpos);
-		ref_pub.publish(msgref);
+			geometry_msgs::PoseStamped msgref;
+			msgref.header.stamp = rosTime;
+			msgref.pose.position.x = px.reference();
+			msgref.pose.position.z = pz.reference();
+			msgref.pose.position.y = py.reference();
+			msgref.pose.orientation.x = gz.reference();
 
+			geometry_msgs::PoseStamped msgpos;
+			msgpos.header.stamp = rosTime;
+			msgpos.pose.position.x = -liny;
+			msgpos.pose.position.z = linz;
+			msgpos.pose.position.y = linx;
+			msgpos.pose.orientation.z = angZ;
+
+			vel_pub.publish(msg);
+			pose_pub.publish(msgpos);
+			ref_pub.publish(msgref);
+		}
 		ros::spinOnce();
 		loop_rate.sleep();
 	}

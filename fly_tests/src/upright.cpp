@@ -36,12 +36,12 @@ int main(int argc, char** argv)
 	twist_msg_hover.angular.z=0.0;  
 
 //psudo-hover message
-	twist_msg_pshover.linear.x=0.03; // lowest value for psudo hover to work
-	twist_msg_pshover.linear.y=0.03;
-	twist_msg_pshover.linear.z=0.0;
+	twist_msg_pshover.linear.x=0.0; // lowest value for psudo hover to work
+	twist_msg_pshover.linear.y=0.0;
+	twist_msg_pshover.linear.z=0.2;
 	twist_msg_pshover.angular.x=0.0; 
 	twist_msg_pshover.angular.y=0.0;
-	twist_msg_pshover.angular.z=0.03; 
+	twist_msg_pshover.angular.z=0.0; 
 
 //command message
 	float fly_time=9.0;
