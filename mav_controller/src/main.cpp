@@ -53,7 +53,30 @@ void VelCallback(const geometry_msgs::TwistConstPtr vel)
 
 int main(int _argc, char **_argv)
 {
+	float i;
+	std::cout << "enter z altitude: ";
+	std::cin >> i;
+	std::cout << std::endl;
+	bool fly = true;
 
+	std::thread keyboard([&]() {
+		int input;
+		for (;;)
+		{
+			std::cout << "Type 66 to quit: ";
+			std::cin >> input;
+			std::cout << std::endl;
+			if (input == 66)
+			{
+				std::cout << "66 pressed ending test" << std::endl;
+				fly = false;
+			}
+			else
+			{
+				std::cout << "66 not pressed" << std::endl;
+			}
+		}
+	});
 	ros::init(_argc, _argv, "MAV_Controller");
 	ros::NodeHandle nh;
 	ros::Rate loop_rate(50);
@@ -79,11 +102,6 @@ int main(int _argc, char **_argv)
 	twist_msg_pshover.angular.y = 0.0;
 	twist_msg_pshover.angular.z = 0.03;
 
-	float i;
-	std::cout << "enter z altitude: ";
-	std::cin >> i;
-	std::cout << std::endl;
-
 	cv::Mat frame;
 	Mat cameraMatrix = (Mat1d(3, 3) << 726.429011, 0.000000, 283.809411, 0.000000, 721.683494, 209.109682, 0.000000, 0.000000, 1.000000);
 	Mat distCoeffs = (Mat1d(1, 5) << -0.178842, 0.660284, -0.005134, -0.005166, 0.000000);
@@ -105,26 +123,6 @@ int main(int _argc, char **_argv)
 	{
 		pz.reference(i);
 	}
-	bool fly = true;
-
-	std::thread keyboard([&]() {
-		int input;
-		for (;;)
-		{
-			std::cout << "Type 66 to quit: ";
-			std::cin >> input;
-			std::cout << std::endl;
-			if (input == 66)
-			{
-				std::cout << "66 pressed ending test" << std::endl;
-				fly = false;
-			}
-			else
-			{
-				std::cout << "66 not pressed" << std::endl;
-			}
-		}
-	});
 
 	auto t0 = chrono::steady_clock::now();
 	while (ros::ok() && fly)
@@ -150,14 +148,14 @@ int main(int _argc, char **_argv)
 			float az = gz.update(angZ, incT);
 
 			geometry_msgs::Twist msg;
-			msg.linear.x = 0.0; //uy;
-			msg.linear.y = 0.0; //ux;
+			msg.linear.x = 0.03; //uy;
+			msg.linear.y = 0.03; //ux;
 			msg.linear.z = uz;
-			msg.angular.z = 0; //az;
+			msg.angular.z = 0.02; //az;
 			// Hovering deactivated
 			msg.angular.x = 1;
 			msg.angular.y = 1;
-			
+
 			// if ()
 			// {
 			// 	std::cout << std::fixed << " Battery percent: " << batteryPercent << std::endl;
