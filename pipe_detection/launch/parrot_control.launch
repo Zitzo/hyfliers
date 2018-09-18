@@ -1,0 +1,9 @@
+<launch>
+
+<node pkg="pipe_detection" type="detector" name="detector" 
+output="screen"/>
+
+<node pkg="mav_controller" type="uav_pid" name="uav_pid" 
+output="screen"/>
+
+</launch>

@@ -1,0 +1,11 @@
+
+
+<launch>
+
+<node pkg="pipe_detection" type="simulator" name="simulator" 
+output="screen"/>
+
+<node pkg="mav_controller" type="pid_simulator" name="pid_simulator" 
+output="screen"/>
+
+</launch>

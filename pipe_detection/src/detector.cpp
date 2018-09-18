@@ -84,10 +84,10 @@ double getOrientation(const vector<Point> &pts, vector<double> &pipeCentroid, ve
   drawAxis(img, cntr, p2, Scalar(255, 255, 0), 5);
   double angle = atan2(eigen_vecs[0].y, eigen_vecs[0].x); // orientation in radians
   //angle = angle * 180 / M_PI;                             // Added
-  std::cout << "Centroid coordinates x,y: " << cntr.x << "," << cntr.y << std::endl;
-  std::cout << "P1 x,y: " << p1.x << "," << p1.y << std::endl;
-  std::cout << "P2 x,y: " << p2.x << "," << p2.y << std::endl;
-  std::cout << "Angle: " << angle * 180 / M_PI << std::endl;
+  //std::cout << "Centroid coordinates x,y: " << cntr.x << "," << cntr.y << std::endl;
+  //std::cout << "P1 x,y: " << p1.x << "," << p1.y << std::endl;
+  //std::cout << "P2 x,y: " << p2.x << "," << p2.y << std::endl;
+  //std::cout << "Angle: " << angle * 180 / M_PI << std::endl;
   // Add cntr point and two eigen_vecs and eigen_val (p1 and p2)
   pipeCentroid.push_back(cntr.x);
   pipeCentroid.push_back(cntr.y);
@@ -178,7 +178,7 @@ public:
     // sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", img).toImageMsg();
 
     // Do something with img and store the result in send
-    ROS_INFO("Callback");
+    //ROS_INFO("Callback");
     t0 = clock();
     /// Create a matrix of the same type and size as src (for dst)
     dst.create(src.size(), src.type());
@@ -292,9 +292,9 @@ public:
     //imshow("output3", bw);
     t3 = clock();
     double time1 = (double(t1 - t0) / CLOCKS_PER_SEC);
-    cout << "Execution Time Bovil: " << time1 << endl;
+    //cout << "Execution Time Bovil: " << time1 << endl;
     double time2 = (double(t3 - t2) / CLOCKS_PER_SEC);
-    cout << "Execution Time PCA: " << time2 << endl;
+    //cout << "Execution Time PCA: " << time2 << endl;
   }
 
 public:
