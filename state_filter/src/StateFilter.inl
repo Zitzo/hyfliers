@@ -1,15 +1,47 @@
-bool StateFilter::computeKalmanFilter()
+#include "ardrone_autonomy/Navdata.h"
+
+StateFilter::StateFilter(ros::NodeHandle &n) : nh_(n)
 {
-    std::cout << "Initializating Extended Kalman Filter" << std::endl;
+    centroid_subscriber = n.subscribe("/ardrone/navdata", 10, &StateFilter::centroidCallback, this);
+    if (newData)
+    {
+
+        if (!mKalmanInitialized)
+        {
+            t0 = std::chrono::steady_clock::now();
+            initializeKalmanFilter();
+        }
+        else
+        {
+            auto t1 = std::chrono::steady_clock::now();
+            float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() / 1000.0f;
+            t0 = t1;
+            computeKalmanFilter(incT);
+        }
+        newData = false;
+    }
+}
+
+/*------------------------------------------------------------------------------------------------------------------------*/
+
+void StateFilter::centroidCallback(const ardrone_autonomy::Navdata imu)
+{
+    newData = true;
+}
+
+/*------------------------------------------------------------------------------------------------------------------------*/
+
+bool StateFilter::computeKalmanFilter(float _incT)
+{
+
     // Adding new observation
     Eigen::Matrix<float, 6, 1> z;
     // We assume z cte between centroid and dominant axis
-    z << centroid[0], centroid[1], p1,
-        p1[0], p1[1], p1;
-    double rate = 0.2; //666: Rate!!!!!!!!!
+    // z << centroid[0], centroid[1], p1,
+    //     p1[0], p1[1], p1;
 
     // New step in EKF
-    ekf.stepEKF(z, rate);
+    ekf.stepEKF(z, _incT);
     Eigen::Matrix<float, 4, 1> XfilteredCntr = ekf.state();
 
     // State model to observation model to draw it
@@ -28,8 +60,11 @@ bool StateFilter::computeKalmanFilter()
     std::cout << "Filtered angle: " << filteredAngle << std::endl;
 }
 
+/*------------------------------------------------------------------------------------------------------------------------*/
+
 void StateFilter::initializeKalmanFilter()
-  {
+{
+    ROS_INFO("Initializating Extended Kalman Filter");
     Eigen::Matrix<float, 4, 4> mQ; // State covariance
     mQ.setIdentity();
     mQ *= 0.01;
@@ -40,4 +75,4 @@ void StateFilter::initializeKalmanFilter()
     //     (p1[0] - mIntrinsic(0, 2)) / mIntrinsic(0, 0), (p1[1] - mIntrinsic(1, 2)) / mIntrinsic(1, 1), p1;
     ekf.setUpEKF(mQ, mR, x0);
     mKalmanInitialized = true;
-  }
+}

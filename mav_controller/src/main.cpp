@@ -17,6 +17,7 @@
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/Point.h"
 #include "ardrone_autonomy/Navdata.h"
+#include <std_msgs/Empty.h>
 
 using namespace cv;
 using namespace pcl;
@@ -64,6 +65,9 @@ int main(int _argc, char **_argv)
 	ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 5);
 	ros::Publisher ref_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 5);
 
+	ros::Publisher pub_empty = nh.advertise<std_msgs::Empty>("/ardrone/land", 1);
+	std_msgs::Empty emp_msg;
+
 	ros::AsyncSpinner spinner(4);
 	spinner.start();
 	////nuevo
@@ -78,6 +82,7 @@ int main(int _argc, char **_argv)
 	float i;
 	std::cout << "enter z altitude: ";
 	std::cin >> i;
+	std::cout << std::endl;
 
 	cv::Mat frame;
 	Mat cameraMatrix = (Mat1d(3, 3) << 726.429011, 0.000000, 283.809411, 0.000000, 721.683494, 209.109682, 0.000000, 0.000000, 1.000000);
@@ -99,8 +104,27 @@ int main(int _argc, char **_argv)
 	if (i != 0)
 		pz.reference(i);
 
+	bool fly = true;
+	
+	std::thread keyboard([&]() {
+		int input;
+		for (;;)
+		{
+			std::cout << "Type 66 to quit: ";
+			std::cin >> input;
+			std::cout << std::endl;
+			if(input==66){
+				std::cout << "66 pressed ending test" << std::endl;
+				fly=false;
+			}
+			else{
+				std::cout << "66 not pressed" << std::endl;
+			}
+		}
+	});
+
 	auto t0 = chrono::steady_clock::now();
-	while (ros::ok())
+	while (ros::ok() && fly)
 	{
 		//nuevo
 		if (0)
@@ -155,5 +179,17 @@ int main(int _argc, char **_argv)
 		ros::spinOnce();
 		loop_rate.sleep();
 	}
+	while (ros::ok()) {
+		ROS_INFO("ARdrone Landing");
+		double time_start=(double)ros::Time::now().toSec();
+		while ((double)ros::Time::now().toSec()< time_start+2.0)
+		{
+			pub_empty.publish(emp_msg); //launches the drone
+			ros::spinOnce();
+			loop_rate.sleep();
+		}
+		ROS_INFO("ARdrone landed");
+		exit(0);
+	}//ros::ok
 	// return (0);
 }

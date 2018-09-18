@@ -8,6 +8,7 @@
 #include "std_msgs/Float64.h"
 #include <ctime>
 #include <opencv2/opencv.hpp>
+#include <chrono>
 
 class PipeEKF : public rgbd::ExtendedKalmanFilter<float, 4, 6>
 {
@@ -39,32 +40,17 @@ protected:
   }
 };
 
-void centroidCallback(const ardrone_autonomy::Navdata imu){};
-void imuCallback(const ardrone_autonomy::Navdata imu){};
-
 class StateFilter
 {
-
 public:
+  StateFilter(ros::NodeHandle &n);
 
-  StateFilter(ros::NodeHandle &n) : nh_(n)
-  {
-    centroid_subscriber = n.subscribe("/ardrone/navdata", 10, centroidCallback);
-    imu_subscriber = n.subscribe("/ardrone/navdata", 10, imuCallback);
-    if (!mKalmanInitialized)
-    {
-      initializeKalmanFilter();
-    }
-    else
-    {
-      computeKalmanFilter();
-    }
-  }
+  void centroidCallback(const ardrone_autonomy::Navdata imu);
 
   // Initialize EKF with first observation of centroid and altitude
   void initializeKalmanFilter();
 
-  bool computeKalmanFilter();
+  bool computeKalmanFilter(float _incT);
 
 public:
   ros::NodeHandle nh_;
@@ -77,6 +63,8 @@ public:
   bool mKalmanInitialized = false;
   std::vector<double> centroid;
   std::vector<double> p1;
+  bool newData = false;
+  std::chrono::steady_clock::time_point t0;
 };
 #include "StateFilter.inl"
 #endif // SLAMMARKI_FILTER_H_
