@@ -25,8 +25,8 @@ using namespace std;
 cv_bridge::CvImagePtr cv_ptr;
 float linx = 0, liny = 0, linz = 0, angZ = 0;
 float batteryPercent;
-unsigned int state;
 int velCount, velCount100ms;
+unsigned int droneState;
 
 void Callback(const geometry_msgs::PoseStamped &msg)
 {
@@ -41,7 +41,7 @@ void IMUCallback(const ardrone_autonomy::Navdata imu)
 	linz = imu.altd;
 	linz = linz / 1000;
 	batteryPercent = imu.batteryPercent;
-	state = imu.state;
+	droneState = imu.state;
 }
 
 void VelCallback(const geometry_msgs::TwistConstPtr vel)
@@ -54,26 +54,46 @@ void VelCallback(const geometry_msgs::TwistConstPtr vel)
 int main(int _argc, char **_argv)
 {
 	float i;
-	std::cout << "enter z altitude: ";
+	std::cout << "Enter altitude: ";
 	std::cin >> i;
 	std::cout << std::endl;
-	bool fly = true;
+	unsigned int state;
 
 	std::thread keyboard([&]() {
-		int input;
+		unsigned int input;
 		for (;;)
 		{
-			std::cout << "Type 66 to quit: ";
+			std::cout << "0=takeoff 1=control 2=fakefly 3=land 4=BatteryandState: ";
 			std::cin >> input;
 			std::cout << std::endl;
-			if (input == 66)
+			if (input == 0)
 			{
-				std::cout << "66 pressed ending test" << std::endl;
-				fly = false;
+				std::cout << "Takeoff" << std::endl;
+				state = input;
+			}
+			else if (input == 1)
+			{
+				std::cout << "Control mode" << std::endl;
+				state = input;
+			}
+			else if (input == 2)
+			{
+				std::cout << "Fakefly mode" << std::endl;
+				state = input;
+			}
+			else if (input == 3)
+			{
+				std::cout << "Land" << std::endl;
+				state = input;
+			}
+			else if (input == 4)
+			{
+				std::cout << std::fixed << " Battery percent: " << batteryPercent << std::endl;
+				std::cout << std::fixed << " ARDrone state: " << droneState << std::endl;
 			}
 			else
 			{
-				std::cout << "66 not pressed" << std::endl;
+				std::cout << "Error: no mode selected" << std::endl;
 			}
 		}
 	});
@@ -81,30 +101,21 @@ int main(int _argc, char **_argv)
 	ros::NodeHandle nh;
 	ros::Rate loop_rate(50);
 
-	ros::Subscriber sub1 = nh.subscribe("/pipe_pose", 10, Callback);
-	ros::Subscriber alt_sub = nh.subscribe("/ardrone/navdata", 10, IMUCallback);
-	ros::Subscriber vel_sub = nh.subscribe(nh.resolveName("cmd_vel"), 50, VelCallback);
+	ros::Subscriber sub1 = nh.subscribe("/pipe_pose", 5, Callback);
+	ros::Subscriber alt_sub = nh.subscribe("/ardrone/navdata", 5, IMUCallback);
+	ros::Subscriber vel_sub = nh.subscribe(nh.resolveName("cmd_vel"), 5, VelCallback);
 	ros::Publisher vel_pub = nh.advertise<geometry_msgs::Twist>(nh.resolveName("cmd_vel"), 1);
 	ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 5);
 	ros::Publisher ref_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 5);
 
+	ros::Publisher pub_takeoff = nh.advertise<std_msgs::Empty>("/ardrone/takeoff", 1);
 	ros::Publisher pub_empty = nh.advertise<std_msgs::Empty>("/ardrone/land", 1);
 	std_msgs::Empty emp_msg;
 
 	ros::AsyncSpinner spinner(4);
 	spinner.start();
 	////nuevo
-	geometry_msgs::Twist twist_msg_pshover;
-	twist_msg_pshover.linear.x = 0.03; // lowest value for psudo hover to work
-	twist_msg_pshover.linear.y = 0.03;
-	twist_msg_pshover.linear.z = 0.0;
-	twist_msg_pshover.angular.x = 0.0;
-	twist_msg_pshover.angular.y = 0.0;
-	twist_msg_pshover.angular.z = 0.03;
-
-	cv::Mat frame;
-	Mat cameraMatrix = (Mat1d(3, 3) << 726.429011, 0.000000, 283.809411, 0.000000, 721.683494, 209.109682, 0.000000, 0.000000, 1.000000);
-	Mat distCoeffs = (Mat1d(1, 5) << -0.178842, 0.660284, -0.005134, -0.005166, 0.000000);
+	geometry_msgs::Twist constant_cmd_vel;
 
 	PID px(0.0, 0.0, 0.0, -0.5, 0.5, -20, 20);
 	PID py(0.0, 0.0, 0.0, -0.5, 0.5, -20, 20);
@@ -125,21 +136,26 @@ int main(int _argc, char **_argv)
 	}
 
 	auto t0 = chrono::steady_clock::now();
-	while (ros::ok() && fly)
+	while (ros::ok() && state!=66)
 	{
 		//nuevo
-		if (0)
+		if (state == 0) // Takeoff
 		{
-			vel_pub.publish(twist_msg_pshover);
-
-			ROS_INFO("Flying");
-		} //fl
-		else
+			double time_start = (double)ros::Time::now().toSec();
+			while ((double)ros::Time::now().toSec() < time_start + 2.0) /* Send command for five seconds*/
+			{
+				pub_takeoff.publish(emp_msg); /* launches the drone */
+				ros::spinOnce();
+				loop_rate.sleep();
+			} //time loop
+			state=10; //To hovering mode
+			ROS_INFO("ARdrone launched");
+		}
+		else if (state == 1) // Control mode
 		{
 			auto t1 = chrono::steady_clock::now();
 			auto rosTime = ros::Time::now();
 
-			//std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() / 1000.0f;
 			t0 = t1;
 			float ux = px.update(linx, incT);
@@ -155,12 +171,6 @@ int main(int _argc, char **_argv)
 			// Hovering deactivated
 			msg.angular.x = 1;
 			msg.angular.y = 1;
-
-			// if ()
-			// {
-			// 	std::cout << std::fixed << " Battery percent: " << batteryPercent << std::endl;
-			// }
-			//std::cout << std::fixed << " ARDrone state: " << state << std::endl;
 
 			geometry_msgs::PoseStamped msgref;
 			msgref.header.stamp = rosTime;
@@ -180,21 +190,40 @@ int main(int _argc, char **_argv)
 			pose_pub.publish(msgpos);
 			ref_pub.publish(msgref);
 		}
+		else if (state == 2) // fakefly mode
+		{
+			constant_cmd_vel.linear.x = 0.03;
+			constant_cmd_vel.linear.y = 0.03;
+			constant_cmd_vel.linear.z = 0.0;
+			constant_cmd_vel.angular.x = 0.0;
+			constant_cmd_vel.angular.y = 0.0;
+			constant_cmd_vel.angular.z = 0.03;
+			vel_pub.publish(constant_cmd_vel);
+		}
+		else if (state == 3) // Land
+		{
+			double time_start = (double)ros::Time::now().toSec();
+			while ((double)ros::Time::now().toSec() < time_start + 2.0)
+			{
+				pub_empty.publish(emp_msg);
+				ros::spinOnce();
+				loop_rate.sleep();
+			}
+			ROS_INFO("ARdrone landed");
+			state=66;
+			exit(0);
+		}
+		else // hovering mode
+		{
+			constant_cmd_vel.linear.x = 0.0;
+			constant_cmd_vel.linear.y = 0.0;
+			constant_cmd_vel.linear.z = 0.0;
+			constant_cmd_vel.angular.x = 0.0;
+			constant_cmd_vel.angular.y = 0.0;
+			constant_cmd_vel.angular.z = 0.0;
+			vel_pub.publish(constant_cmd_vel);
+		}
 		ros::spinOnce();
 		loop_rate.sleep();
 	}
-	while (ros::ok())
-	{
-		ROS_INFO("ARdrone Landing");
-		double time_start = (double)ros::Time::now().toSec();
-		while ((double)ros::Time::now().toSec() < time_start + 2.0)
-		{
-			pub_empty.publish(emp_msg); //launches the drone
-			ros::spinOnce();
-			loop_rate.sleep();
-		}
-		ROS_INFO("ARdrone landed");
-		exit(0);
-	} //ros::ok
-	  // return (0);
 }
