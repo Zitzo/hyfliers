@@ -64,37 +64,28 @@ int main(int _argc, char **_argv)
 		for (;;)
 		{
 			std::cout << "0=takeoff 1=control 2=fakefly 3=land 4=BatteryandState: ";
-			std::cin >> input;
+			std::cin >> state;
 			std::cout << std::endl;
-			if (input == 0)
+			if (input == 9)
 			{
 				std::cout << "Takeoff" << std::endl;
-				state = input;
 			}
-			else if (input == 1)
+			else if (input == 8)
 			{
 				std::cout << "Control mode" << std::endl;
-				state = input;
 			}
-			else if (input == 2)
+			else if (input == 7)
 			{
 				std::cout << "Fakefly mode" << std::endl;
-				state = input;
 			}
-			else if (input == 3)
+			else if (input == 0)
 			{
-				std::cout << "Land" << std::endl;
-				state = input;
-				
+				std::cout << "Land" << std::endl;				
 			}
 			else if (input == 4)
 			{
 				std::cout << std::fixed << " Battery percent: " << batteryPercent << std::endl;
 				std::cout << std::fixed << " ARDrone state: " << droneState << std::endl;
-			}
-			else
-			{
-				std::cout << "Error: no mode selected" << std::endl;
 			}
 		}
 	});
@@ -135,12 +126,12 @@ int main(int _argc, char **_argv)
 	{
 		pz.reference(i);
 	}
-
+	double keytime = 1.0;
 	auto t0 = chrono::steady_clock::now();
 	while (ros::ok() && state!=66)
 	{
 		//nuevo
-		if (state == 0) // Takeoff
+		if (state == 9) // Takeoff
 		{
 			double time_start = (double)ros::Time::now().toSec();
 			while ((double)ros::Time::now().toSec() < time_start + 2.0) /* Send command for five seconds*/
@@ -152,7 +143,7 @@ int main(int _argc, char **_argv)
 			state=10; //To hovering mode
 			ROS_INFO("ARdrone launched");
 		}
-		else if (state == 1) // Control mode
+		else if (state == 8) // Control mode
 		{
 			auto t1 = chrono::steady_clock::now();
 			auto rosTime = ros::Time::now();
@@ -191,7 +182,7 @@ int main(int _argc, char **_argv)
 			pose_pub.publish(msgpos);
 			ref_pub.publish(msgref);
 		}
-		else if (state == 2) // fakefly mode
+		else if (state == 7) // fakefly mode
 		{
 			constant_cmd_vel.linear.x = 0.03;
 			constant_cmd_vel.linear.y = 0.03;
@@ -201,7 +192,7 @@ int main(int _argc, char **_argv)
 			constant_cmd_vel.angular.z = 0.03;
 			vel_pub.publish(constant_cmd_vel);
 		}
-		else if (state == 3) // Land
+		else if (state == 0) // Land
 		{
 			double time_start = (double)ros::Time::now().toSec();
 			while ((double)ros::Time::now().toSec() < time_start + 2.0)
@@ -213,6 +204,74 @@ int main(int _argc, char **_argv)
 			ROS_INFO("ARdrone landed");
 			state=66;
 			exit(0);
+		}
+		else if (state == 1) // go forward
+		{
+			double time_start = (double)ros::Time::now().toSec();
+			while ((double)ros::Time::now().toSec() < time_start + keytime)
+			{
+				constant_cmd_vel.linear.x = 0.1;
+				constant_cmd_vel.linear.y = 0.0;
+				constant_cmd_vel.linear.z = 0.0;
+				constant_cmd_vel.angular.x = 0.0;
+				constant_cmd_vel.angular.y = 0.0;
+				constant_cmd_vel.angular.z = 0.0;
+				vel_pub.publish(constant_cmd_vel);
+				ros::spinOnce();
+				loop_rate.sleep();
+			}
+			state=66;	// go hovering mode
+		}
+		else if (state == 2) // go backward
+		{
+			double time_start = (double)ros::Time::now().toSec();
+			while ((double)ros::Time::now().toSec() < time_start + keytime)
+			{
+				constant_cmd_vel.linear.x = -0.1;
+				constant_cmd_vel.linear.y = 0.0;
+				constant_cmd_vel.linear.z = 0.0;
+				constant_cmd_vel.angular.x = 0.0;
+				constant_cmd_vel.angular.y = 0.0;
+				constant_cmd_vel.angular.z = 0.0;
+				vel_pub.publish(constant_cmd_vel);
+				ros::spinOnce();
+				loop_rate.sleep();
+			}
+			state=66;	// go hovering mode
+		}
+		else if (state == 3) // go right
+		{
+			double time_start = (double)ros::Time::now().toSec();
+			while ((double)ros::Time::now().toSec() < time_start + keytime)
+			{
+				constant_cmd_vel.linear.x = 0.0;
+				constant_cmd_vel.linear.y = 0.1;
+				constant_cmd_vel.linear.z = 0.0;
+				constant_cmd_vel.angular.x = 0.0;
+				constant_cmd_vel.angular.y = 0.0;
+				constant_cmd_vel.angular.z = 0.0;
+				vel_pub.publish(constant_cmd_vel);
+				ros::spinOnce();
+				loop_rate.sleep();
+			}
+			state=66;	// go hovering mode
+		}
+		else if (state == 4) // go left
+		{
+			double time_start = (double)ros::Time::now().toSec();
+			while ((double)ros::Time::now().toSec() < time_start + keytime)
+			{
+				constant_cmd_vel.linear.x = 0.0;
+				constant_cmd_vel.linear.y = -0.1;
+				constant_cmd_vel.linear.z = 0.0;
+				constant_cmd_vel.angular.x = 0.0;
+				constant_cmd_vel.angular.y = 0.0;
+				constant_cmd_vel.angular.z = 0.0;
+				vel_pub.publish(constant_cmd_vel);
+				ros::spinOnce();
+				loop_rate.sleep();
+			}
+			state=66;	// go hovering mode
 		}
 		else // hovering mode
 		{
