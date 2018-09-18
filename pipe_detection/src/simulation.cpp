@@ -93,11 +93,14 @@ double getOrientation(const vector<Point> &pts, vector<double> &pipeCentroid, ve
   //std::cout << "P1 x,y: " << p1.x << "," << p1.y << std::endl;
   //std::cout << "P2 x,y: " << p2.x << "," << p2.y << std::endl;
   //std::cout << "Angle: " << angle * 180 / M_PI << std::endl;
+  //std::cout << "Angle: " << angle << std::endl;
   // Add cntr point and two eigen_vecs and eigen_val (p1 and p2)
   pipeCentroid.push_back(cntr.x);
   pipeCentroid.push_back(cntr.y);
   pipeP1.push_back(p1.x);
   pipeP1.push_back(p1.y);
+  if (angle > 0) 
+  angle = angle*(-1);  // to avoid noise changing reference
   return angle;
 }
 
