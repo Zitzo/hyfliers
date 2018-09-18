@@ -85,6 +85,7 @@ int main(int _argc, char **_argv)
 			{
 				std::cout << "Land" << std::endl;
 				state = input;
+				
 			}
 			else if (input == 4)
 			{
