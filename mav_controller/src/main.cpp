@@ -18,6 +18,7 @@
 #include "geometry_msgs/Point.h"
 #include "ardrone_autonomy/Navdata.h"
 #include <std_msgs/Empty.h>
+#include <mutex>
 
 using namespace cv;
 using namespace pcl;
@@ -27,6 +28,7 @@ float linx = 0, liny = 0, linz = 0, angZ = 0;
 float batteryPercent;
 int velCount, velCount100ms;
 unsigned int droneState;
+std::mutex stateMutex;
 
 void Callback(const geometry_msgs::PoseStamped &msg)
 {
@@ -46,10 +48,9 @@ void IMUCallback(const ardrone_autonomy::Navdata imu)
 
 void VelCallback(const geometry_msgs::TwistConstPtr vel)
 {
-	velCount++;
-	velCount100ms++;
+	// velCount++;
+	// velCount100ms++;
 }
-//nuevo
 
 int main(int _argc, char **_argv)
 {
@@ -61,31 +62,34 @@ int main(int _argc, char **_argv)
 
 	std::thread keyboard([&]() {
 		unsigned int input;
-		for (;;)
+		bool run=true;
+		while(run)
 		{
-			std::cout << "0=takeoff 1=control 2=fakefly 3=land 4=BatteryandState: ";
-			std::cin >> state;
+			std::cout << "1,2,3,4=move 9=takeoff 8=control 7=fakefly 0=land 4=Battery and State: ";
+			std::cin >> input;
 			std::cout << std::endl;
-			if (input == 9)
+			stateMutex.lock();
+			state = input;
+			stateMutex.unlock();
+			switch (input)
 			{
+			case 9:
 				std::cout << "Takeoff" << std::endl;
-			}
-			else if (input == 8)
-			{
+				break;
+			case 8:
 				std::cout << "Control mode" << std::endl;
-			}
-			else if (input == 7)
-			{
+				break;
+			case 7:
 				std::cout << "Fakefly mode" << std::endl;
-			}
-			else if (input == 0)
-			{
-				std::cout << "Land" << std::endl;				
-			}
-			else if (input == 4)
-			{
+				break;
+			case 0:
+				std::cout << "Land" << std::endl;
+				run=false;
+				break;
+			case 4:
 				std::cout << std::fixed << " Battery percent: " << batteryPercent << std::endl;
 				std::cout << std::fixed << " ARDrone state: " << droneState << std::endl;
+				break;
 			}
 		}
 	});
@@ -106,7 +110,7 @@ int main(int _argc, char **_argv)
 
 	ros::AsyncSpinner spinner(4);
 	spinner.start();
-	////nuevo
+	//
 	geometry_msgs::Twist constant_cmd_vel;
 
 	PID px(0.0, 0.0, 0.0, -0.5, 0.5, -20, 20);
@@ -128,22 +132,9 @@ int main(int _argc, char **_argv)
 	}
 	double keytime = 1.0;
 	auto t0 = chrono::steady_clock::now();
-	while (ros::ok() && state!=66)
+	while (ros::ok() && state != 66)
 	{
-		//nuevo
-		if (state == 9) // Takeoff
-		{
-			double time_start = (double)ros::Time::now().toSec();
-			while ((double)ros::Time::now().toSec() < time_start + 2.0) /* Send command for five seconds*/
-			{
-				pub_takeoff.publish(emp_msg); /* launches the drone */
-				ros::spinOnce();
-				loop_rate.sleep();
-			} //time loop
-			state=10; //To hovering mode
-			ROS_INFO("ARdrone launched");
-		}
-		else if (state == 8) // Control mode
+		if (state == 8) // Control mode
 		{
 			auto t1 = chrono::steady_clock::now();
 			auto rosTime = ros::Time::now();
@@ -156,10 +147,10 @@ int main(int _argc, char **_argv)
 			float az = gz.update(angZ, incT);
 
 			geometry_msgs::Twist msg;
-			msg.linear.x = 0.03; //uy;
-			msg.linear.y = 0.03; //ux;
+			msg.linear.x = uy; //uy;
+			msg.linear.y = ux; //ux;
 			msg.linear.z = uz;
-			msg.angular.z = 0.02; //az;
+			msg.angular.z = 0; //az; 
 			// Hovering deactivated
 			msg.angular.x = 1;
 			msg.angular.y = 1;
@@ -182,6 +173,17 @@ int main(int _argc, char **_argv)
 			pose_pub.publish(msgpos);
 			ref_pub.publish(msgref);
 		}
+		else if (state == 9) // Takeoff
+		{
+			double time_start = (double)ros::Time::now().toSec();
+			while ((double)ros::Time::now().toSec() < time_start + 2.0) /* Send command for five seconds*/
+			{
+				pub_takeoff.publish(emp_msg); /* launches the drone */
+				ros::spinOnce();
+				loop_rate.sleep();
+			}			//time loop
+			state = 10; //To hovering mode
+		}
 		else if (state == 7) // fakefly mode
 		{
 			constant_cmd_vel.linear.x = 0.03;
@@ -201,8 +203,10 @@ int main(int _argc, char **_argv)
 				ros::spinOnce();
 				loop_rate.sleep();
 			}
-			ROS_INFO("ARdrone landed");
-			state=66;
+			stateMutex.lock();
+			state = 66; // go hovering mode
+			stateMutex.unlock();
+			keyboard.join();
 			exit(0);
 		}
 		else if (state == 1) // go forward
@@ -220,14 +224,16 @@ int main(int _argc, char **_argv)
 				ros::spinOnce();
 				loop_rate.sleep();
 			}
-			state=66;	// go hovering mode
+			stateMutex.lock();
+			state = 66; // go hovering mode
+			stateMutex.unlock();
 		}
 		else if (state == 2) // go backward
 		{
 			double time_start = (double)ros::Time::now().toSec();
 			while ((double)ros::Time::now().toSec() < time_start + keytime)
 			{
-				constant_cmd_vel.linear.x = -0.1;
+				constant_cmd_vel.linear.x = -0.5;
 				constant_cmd_vel.linear.y = 0.0;
 				constant_cmd_vel.linear.z = 0.0;
 				constant_cmd_vel.angular.x = 0.0;
@@ -237,7 +243,9 @@ int main(int _argc, char **_argv)
 				ros::spinOnce();
 				loop_rate.sleep();
 			}
-			state=66;	// go hovering mode
+			stateMutex.lock();
+			state = 66; // go hovering mode
+			stateMutex.unlock();
 		}
 		else if (state == 3) // go right
 		{
@@ -245,7 +253,7 @@ int main(int _argc, char **_argv)
 			while ((double)ros::Time::now().toSec() < time_start + keytime)
 			{
 				constant_cmd_vel.linear.x = 0.0;
-				constant_cmd_vel.linear.y = 0.1;
+				constant_cmd_vel.linear.y = 0.5;
 				constant_cmd_vel.linear.z = 0.0;
 				constant_cmd_vel.angular.x = 0.0;
 				constant_cmd_vel.angular.y = 0.0;
@@ -254,7 +262,9 @@ int main(int _argc, char **_argv)
 				ros::spinOnce();
 				loop_rate.sleep();
 			}
-			state=66;	// go hovering mode
+			stateMutex.lock();
+			state = 66; // go hovering mode
+			stateMutex.unlock();
 		}
 		else if (state == 4) // go left
 		{
@@ -262,7 +272,7 @@ int main(int _argc, char **_argv)
 			while ((double)ros::Time::now().toSec() < time_start + keytime)
 			{
 				constant_cmd_vel.linear.x = 0.0;
-				constant_cmd_vel.linear.y = -0.1;
+				constant_cmd_vel.linear.y = -0.5;
 				constant_cmd_vel.linear.z = 0.0;
 				constant_cmd_vel.angular.x = 0.0;
 				constant_cmd_vel.angular.y = 0.0;
@@ -271,7 +281,9 @@ int main(int _argc, char **_argv)
 				ros::spinOnce();
 				loop_rate.sleep();
 			}
-			state=66;	// go hovering mode
+			stateMutex.lock();
+			state = 66; // go hovering mode
+			stateMutex.unlock();
 		}
 		else // hovering mode
 		{
