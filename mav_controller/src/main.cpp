@@ -54,9 +54,9 @@ void VelCallback(const geometry_msgs::TwistConstPtr vel)
 
 int main(int _argc, char **_argv)
 {
-	float i;
+	float zChange;
 	std::cout << "Enter altitude: ";
-	std::cin >> i;
+	std::cin >> zChange;
 	std::cout << std::endl;
 	unsigned int state;
 
@@ -66,17 +66,16 @@ int main(int _argc, char **_argv)
 		while (run)
 		{
 			auto t0 = chrono::steady_clock::now();
-			std::cout << "1,2,3,4=move 9=takeoff 8=control 7=fakefly 0=land 4=Battery and State" << std::endl;
+			std::cout << "1,2,3,4=move || 9=takeoff || 8=control || 7=fakefly || 0=land || 4=Battery and State || 30=change Z reference" << std::endl;
 			std::cin >> input;
 			stateMutex.lock();
 			state = input;
 			stateMutex.unlock();
 			auto t1 = chrono::steady_clock::now();
 			float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() / 1000.0f;
-			if (incT > 0.7)
-			{	
+			if (incT > 0.6)
+			{
 				std::cout << "Time: " << incT << std::endl;
-				std::cout << "State: " << input << std::endl;
 				switch (input)
 				{
 				case 0:
@@ -107,6 +106,15 @@ int main(int _argc, char **_argv)
 					break;
 				case 9:
 					std::cout << "Takeoff" << std::endl;
+					break;
+				case 30:
+					float i;
+					std::cout << "Enter altitude: ";
+					std::cin >> i;
+					if (i>0 && i<4){
+						std::cout << "Changing altitude reference to " << i << std::endl;
+						zChange=i;
+					}
 					break;
 				default:
 					std::cout << "Hovering" << std::endl;
@@ -148,15 +156,15 @@ int main(int _argc, char **_argv)
 	py.enableRosInterface("/mav_controller/pid_y");
 	pz.enableRosInterface("/mav_controller/pid_z");
 
-	if (i != 0)
+	if (zChange != 0)
 	{
-		pz.reference(i);
+		pz.reference(zChange);
 	}
-	state = 66; // Start in hovering
-	double keytime = 1.0;
+	state = 10; // Start in hovering
 	auto t0 = chrono::steady_clock::now();
 	bool run = true;
-	float v=0.5;	// Fixed velocity
+	double keytime = 0.5; //Fixed command time
+	float v = 0.5;		  // Fixed velocity
 	while (ros::ok() && run)
 	{
 		if (state == 8) // Control mode
@@ -206,8 +214,10 @@ int main(int _argc, char **_argv)
 				pub_takeoff.publish(emp_msg); /* launches the drone */
 				ros::spinOnce();
 				loop_rate.sleep();
-			}			//time loop
+			} //time loop
+			stateMutex.lock();
 			state = 10; //To hovering mode
+			stateMutex.unlock();
 		}
 		else if (state == 7) // fakefly mode
 		{
@@ -249,7 +259,7 @@ int main(int _argc, char **_argv)
 				loop_rate.sleep();
 			}
 			stateMutex.lock();
-			state = 66; // go hovering mode
+			state = 10; // go hovering mode
 			stateMutex.unlock();
 		}
 		else if (state == 2) // go backward
@@ -268,7 +278,7 @@ int main(int _argc, char **_argv)
 				loop_rate.sleep();
 			}
 			stateMutex.lock();
-			state = 66; // go hovering mode
+			state = 10; // go hovering mode
 			stateMutex.unlock();
 		}
 		else if (state == 3) // go right
@@ -287,7 +297,7 @@ int main(int _argc, char **_argv)
 				loop_rate.sleep();
 			}
 			stateMutex.lock();
-			state = 66; // go hovering mode
+			state = 10; // go hovering mode
 			stateMutex.unlock();
 		}
 		else if (state == 4) // go left
@@ -306,8 +316,12 @@ int main(int _argc, char **_argv)
 				loop_rate.sleep();
 			}
 			stateMutex.lock();
-			state = 66; // go hovering mode
+			state = 10; // go hovering mode
 			stateMutex.unlock();
+		}
+		else if(state == 30)
+		{
+			pz.reference(zChange);
 		}
 		else // hovering mode
 		{
