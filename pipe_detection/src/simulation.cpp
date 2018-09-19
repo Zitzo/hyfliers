@@ -206,23 +206,23 @@ public:
     std::vector<rgbd::ImageObject> objects;
     // BOViL::ColorClusterSpace *ccs = BOViL::CreateHSVCS_8c(255,255,255);
 
-    //gray pipe detection
-    //rgbd::ColorClusterSpace *ccs = rgbd::createSingleClusteredSpace(
-    //    90, 130,
-    //    10, 70,
-    //    100, 180,
-    //    180, 255, 255,
-    //    32);
-
-
-
-
-    rgbd::ColorClusterSpace *ccs = rgbd::createSingleSparseCluster(
-        {std::pair<unsigned char, unsigned char>(0,30),std::pair<unsigned char, unsigned char>(140,180)},
-        {std::pair<unsigned char, unsigned char>(50, 255)},
-        {std::pair<unsigned char, unsigned char>(50, 255)},
+    //grey pipe detection
+    rgbd::ColorClusterSpace *ccs = rgbd::createSingleClusteredSpace(
+        0, 180,
+        0, 150,
+        0, 150,
         180, 255, 255,
         32);
+
+
+
+    // Red cardboard detection
+   // rgbd::ColorClusterSpace *ccs = rgbd::createSingleSparseCluster(
+   //     {std::pair<unsigned char, unsigned char>(0,30),std::pair<unsigned char, unsigned char>(140,180)},
+   //     {std::pair<unsigned char, unsigned char>(50, 255)},
+   //     {std::pair<unsigned char, unsigned char>(50, 255)},
+   //     180, 255, 255,
+   //     32);
 
     rgbd::ColorClustering<uchar>(dst.data,
                                  dst.cols,

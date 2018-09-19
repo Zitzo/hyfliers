@@ -71,7 +71,7 @@ int main(int _argc, char **_argv)
 	waypoint.header.frame_id = "map";
 	waypoint.pose.position.x = 0;
 	waypoint.pose.position.y = 0;
-	waypoint.pose.position.z = 2;
+	waypoint.pose.position.z = 4;
 	waypoint.pose.orientation.x = 0;
 	waypoint.pose.orientation.y = 0;
 	waypoint.pose.orientation.z = 0;
@@ -120,6 +120,14 @@ int main(int _argc, char **_argv)
 			for(;;){
 				std::cout << "Set Z reference: ";
 				std::cin >> reference_z;
+
+				if (reference_z == 0)
+				ual.land();
+				if (reference_z == -1)
+				{
+				ual.takeOff(flight_level);
+				}
+				if (reference_z > 0)
 				pz.reference(reference_z);
 			}
 		}
@@ -136,6 +144,8 @@ int main(int _argc, char **_argv)
 		float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() / 1000.0f;
 		//std::cout << incT << std::endl;
 		t0 = t1;
+		if (reference_z > 0)
+		{
 		float ux = px.update(linx, incT);
 		float uy = py.update(liny, incT);
 		float uz = pz.update(linz, incT);
@@ -168,6 +178,7 @@ int main(int _argc, char **_argv)
 		vel_pub.publish(msg);
 		pose_pub.publish(msgpos);
 		ref_pub.publish(msgref);
+		}
 	}
 	// return (0);
 }
