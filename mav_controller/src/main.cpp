@@ -62,40 +62,62 @@ int main(int _argc, char **_argv)
 
 	std::thread keyboard([&]() {
 		unsigned int input;
-		bool run=true;
-		while(run)
+		bool run = true;
+		while (run)
 		{
-			std::cout << "1,2,3,4=move 9=takeoff 8=control 7=fakefly 0=land 4=Battery and State: ";
+			auto t0 = chrono::steady_clock::now();
+			std::cout << "1,2,3,4=move 9=takeoff 8=control 7=fakefly 0=land 4=Battery and State" << std::endl;
 			std::cin >> input;
-			std::cout << std::endl;
 			stateMutex.lock();
 			state = input;
 			stateMutex.unlock();
-			switch (input)
-			{
-			case 9:
-				std::cout << "Takeoff" << std::endl;
-				break;
-			case 8:
-				std::cout << "Control mode" << std::endl;
-				break;
-			case 7:
-				std::cout << "Fakefly mode" << std::endl;
-				break;
-			case 0:
-				std::cout << "Land" << std::endl;
-				run=false;
-				break;
-			case 4:
-				std::cout << std::fixed << " Battery percent: " << batteryPercent << std::endl;
-				std::cout << std::fixed << " ARDrone state: " << droneState << std::endl;
-				break;
+			auto t1 = chrono::steady_clock::now();
+			float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() / 1000.0f;
+			if (incT > 0.7)
+			{	
+				std::cout << "Time: " << incT << std::endl;
+				std::cout << "State: " << input << std::endl;
+				switch (input)
+				{
+				case 0:
+					std::cout << "Land" << std::endl;
+					run = false;
+					break;
+				case 1:
+					std::cout << "Forward" << std::endl;
+					break;
+				case 2:
+					std::cout << "Backward" << std::endl;
+					break;
+				case 3:
+					std::cout << "Left" << std::endl;
+					break;
+				case 4:
+					std::cout << "Right" << std::endl;
+					break;
+				case 6:
+					std::cout << std::fixed << " Battery percent: " << batteryPercent << std::endl;
+					std::cout << std::fixed << " ARDrone state: " << droneState << std::endl;
+					break;
+				case 7:
+					std::cout << "Fakefly mode" << std::endl;
+					break;
+				case 8:
+					std::cout << "Control mode" << std::endl;
+					break;
+				case 9:
+					std::cout << "Takeoff" << std::endl;
+					break;
+				default:
+					std::cout << "Hovering" << std::endl;
+				}
 			}
 		}
+		std::cout << std::fixed << "Closing keyboard thread" << std::endl;
 	});
 	ros::init(_argc, _argv, "MAV_Controller");
 	ros::NodeHandle nh;
-	ros::Rate loop_rate(50);
+	ros::Rate loop_rate(20);
 
 	ros::Subscriber sub1 = nh.subscribe("/pipe_pose", 5, Callback);
 	ros::Subscriber alt_sub = nh.subscribe("/ardrone/navdata", 5, IMUCallback);
@@ -110,7 +132,7 @@ int main(int _argc, char **_argv)
 
 	ros::AsyncSpinner spinner(4);
 	spinner.start();
-	//
+
 	geometry_msgs::Twist constant_cmd_vel;
 
 	PID px(0.0, 0.0, 0.0, -0.5, 0.5, -20, 20);
@@ -130,9 +152,12 @@ int main(int _argc, char **_argv)
 	{
 		pz.reference(i);
 	}
+	state = 66; // Start in hovering
 	double keytime = 1.0;
 	auto t0 = chrono::steady_clock::now();
-	while (ros::ok() && state != 66)
+	bool run = true;
+	float v=0.5;	// Fixed velocity
+	while (ros::ok() && run)
 	{
 		if (state == 8) // Control mode
 		{
@@ -150,7 +175,7 @@ int main(int _argc, char **_argv)
 			msg.linear.x = uy; //uy;
 			msg.linear.y = ux; //ux;
 			msg.linear.z = uz;
-			msg.angular.z = 0; //az; 
+			msg.angular.z = 0; //az;	//rad/s
 			// Hovering deactivated
 			msg.angular.x = 1;
 			msg.angular.y = 1;
@@ -203,10 +228,9 @@ int main(int _argc, char **_argv)
 				ros::spinOnce();
 				loop_rate.sleep();
 			}
-			stateMutex.lock();
-			state = 66; // go hovering mode
-			stateMutex.unlock();
 			keyboard.join();
+			std::cout << "Closing mav_controller" << std::endl;
+			run = false;
 			exit(0);
 		}
 		else if (state == 1) // go forward
@@ -214,7 +238,7 @@ int main(int _argc, char **_argv)
 			double time_start = (double)ros::Time::now().toSec();
 			while ((double)ros::Time::now().toSec() < time_start + keytime)
 			{
-				constant_cmd_vel.linear.x = 0.1;
+				constant_cmd_vel.linear.x = v;
 				constant_cmd_vel.linear.y = 0.0;
 				constant_cmd_vel.linear.z = 0.0;
 				constant_cmd_vel.angular.x = 0.0;
@@ -233,7 +257,7 @@ int main(int _argc, char **_argv)
 			double time_start = (double)ros::Time::now().toSec();
 			while ((double)ros::Time::now().toSec() < time_start + keytime)
 			{
-				constant_cmd_vel.linear.x = -0.5;
+				constant_cmd_vel.linear.x = -v;
 				constant_cmd_vel.linear.y = 0.0;
 				constant_cmd_vel.linear.z = 0.0;
 				constant_cmd_vel.angular.x = 0.0;
@@ -253,7 +277,7 @@ int main(int _argc, char **_argv)
 			while ((double)ros::Time::now().toSec() < time_start + keytime)
 			{
 				constant_cmd_vel.linear.x = 0.0;
-				constant_cmd_vel.linear.y = 0.5;
+				constant_cmd_vel.linear.y = v;
 				constant_cmd_vel.linear.z = 0.0;
 				constant_cmd_vel.angular.x = 0.0;
 				constant_cmd_vel.angular.y = 0.0;
@@ -272,7 +296,7 @@ int main(int _argc, char **_argv)
 			while ((double)ros::Time::now().toSec() < time_start + keytime)
 			{
 				constant_cmd_vel.linear.x = 0.0;
-				constant_cmd_vel.linear.y = -0.5;
+				constant_cmd_vel.linear.y = -v;
 				constant_cmd_vel.linear.z = 0.0;
 				constant_cmd_vel.angular.x = 0.0;
 				constant_cmd_vel.angular.y = 0.0;
