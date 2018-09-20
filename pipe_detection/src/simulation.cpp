@@ -19,6 +19,7 @@
 #include <Eigen/Eigen>
 #include <Eigen/Geometry> 
 #include <geometry_msgs/PoseStamped.h>
+#include <cstddef>
 //#include <tf/transform_broadcaster.h>
 //#include <uav_abstraction_layer/ual.h>
 
@@ -27,6 +28,7 @@ using namespace std;
 using namespace cv;
 unsigned t0, t1, t2, t3;
 Point pipe_center;
+Eigen::Quaternionf q;
 
 // Function declarations for PCA
 void drawAxis(Mat &, Point, Point, Scalar, const float);
@@ -120,6 +122,10 @@ void IMUCallback(const geometry_msgs::PoseStamped::ConstPtr& _imu)
 {
   altitude = _imu->pose.position.z;
   //altitude = 1000;  // for testing
+  q.x() = _imu->pose.orientation.x;
+  q.y() = _imu->pose.orientation.y;
+  q.z() = _imu->pose.orientation.z;
+  q.w() = _imu->pose.orientation.w;
   //roll = _imu.rotX;
   //pitch = _imu.rotY;
 }
@@ -131,6 +137,7 @@ class ImageProcessor
   image_transport::Subscriber img_sub_;
   image_transport::Publisher img_pub_;
   ros::Publisher pipe_pub_;
+  ros::Publisher ekf_pub_;
   ros::Subscriber alt_sub_;
   // tf::TransformBroadcaster tf_br_;
 public:
@@ -141,6 +148,7 @@ public:
    // sub_alt_ = n.subscribe("/ardrone/navdata", 1000, altitude_Callback);
     img_pub_ = it_.advertise("/output_image", 1);
     pipe_pub_ = n.advertise<geometry_msgs::PoseStamped>("/pipe_pose", 1000);
+    ekf_pub_ = n.advertise<geometry_msgs::PoseStamped>("/ekf/pipe_pose", 1);
     alt_sub_ = n.subscribe("/uav_1/mavros/local_position/pose", 1000, IMUCallback);
 
     //pipe_pub_ = n.advertise<geometry_msgs::Twist>("/pipe_pose", 1000);
@@ -274,8 +282,17 @@ public:
       vector<double> centroid;
       // Find the orientation of each shape
       double yaw = getOrientation(contours[i], centroid, p1, src);
+      // Getting angles for EKF
+      auto euler = q.toRotationMatrix().eulerAngles(0, 1, 2);
+      Eigen::Matrix3f m;
+      m = Eigen::AngleAxisf(euler[0], Eigen::Vector3f::UnitX())
+      * Eigen::AngleAxisf(euler[1],  Eigen::Vector3f::UnitY())
+      * Eigen::AngleAxisf((yaw+M_PI/2), Eigen::Vector3f::UnitZ()); // changing value of yaw so that the position is in 0º
+      // transform to quaternion
+      Eigen::Quaternionf quaternion(m);
       // Initializaing pose
       geometry_msgs::PoseStamped pipe_data; 
+      geometry_msgs::PoseStamped ekf_pipe_data; 
       // xi=fx*x/z+cx, yi=fy*y/z+cy
       pipe_data.pose.position.x = (altitude)*(pipe_center.x - mIntrinsic(0, 2)) / mIntrinsic(0, 0); // x=z*(xi-cx)/fx
       pipe_data.pose.position.y = (altitude)*(pipe_center.y - mIntrinsic(1, 2)) / mIntrinsic(1, 1); // y=z*(yi-cy)/fy
@@ -288,7 +305,18 @@ public:
       pipe_data.pose.orientation.y = 0;
       pipe_data.pose.orientation.z = yaw + 3.14159265/2;
       pipe_data.pose.orientation.w = 0;
+
+      // For Kalman filter
+      ekf_pipe_data.pose.position.x = pipe_center.x;
+      ekf_pipe_data.pose.position.y = pipe_center.y;
+      ekf_pipe_data.pose.position.z = altitude/1000;
+      ekf_pipe_data.pose.orientation.x = quaternion.x();
+      ekf_pipe_data.pose.orientation.y = quaternion.y();
+      ekf_pipe_data.pose.orientation.z = quaternion.z();
+      ekf_pipe_data.pose.orientation.w = quaternion.w();
+
       pipe_pub_.publish(pipe_data);
+      ekf_pub_.publish(ekf_pipe_data);
       //float altitude = pipe_data.pose.position.z;
     }
     imshow("output1", src);
