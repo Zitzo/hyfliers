@@ -112,8 +112,8 @@ void IMUCallback(const ardrone_autonomy::Navdata imu)
 {
   altitude = imu.altd;
   //altitude = 1000;  // for testing
-  roll = imu.rotX;
-  pitch = imu.rotY;
+  roll = imu.rotX * (180/M_PI);
+  pitch = imu.rotY * (180/M_PI);
 }
 
 class ImageProcessor
@@ -123,6 +123,7 @@ class ImageProcessor
   image_transport::Subscriber img_sub_;
   image_transport::Publisher img_pub_;
   ros::Publisher pipe_pub_;
+  ros::Pubisher ekf_pub_;
   ros::Subscriber alt_sub_;
   // tf::TransformBroadcaster tf_br_;
 public:
@@ -132,8 +133,10 @@ public:
     img_sub_ = it_.subscribe("/ardrone/bottom/image_raw", 1, &ImageProcessor::image_callback, this);
    // sub_alt_ = n.subscribe("/ardrone/navdata", 1000, altitude_Callback);
     img_pub_ = it_.advertise("/output_image", 1);
-    pipe_pub_ = n.advertise<geometry_msgs::PoseStamped>("/pipe_pose", 1000);
+    pipe_pub_ = n.advertise<geometry_msgs::PoseStamped>("/pipe_pose", 1);
+    ekf_pub_ = n.advertise<geometry_msgs::PoseStamped>("/ekf/pipe_pose", 1);
     alt_sub_ = n.subscribe("/ardrone/navdata", 1000, IMUCallback);
+
 
     //pipe_pub_ = n.advertise<geometry_msgs::Twist>("/pipe_pose", 1000);
 
@@ -265,13 +268,14 @@ public:
       double yaw = getOrientation(contours[i], centroid, p1, src);
       //Get quaternion
       Eigen::Matrix3f m;
-      m = Eigen::AngleAxisf(roll*M_PI, Eigen::Vector3f::UnitX())
-      * Eigen::AngleAxisf(pitch*M_PI,  Eigen::Vector3f::UnitY())
-      * Eigen::AngleAxisf(yaw*M_PI, Eigen::Vector3f::UnitZ());
+      m = Eigen::AngleAxisf(roll, Eigen::Vector3f::UnitX())
+      * Eigen::AngleAxisf(pitch,  Eigen::Vector3f::UnitY())
+      * Eigen::AngleAxisf((yaw+M_PI/2), Eigen::Vector3f::UnitZ()); // changing value of yaw so that the position is in 0º
       // transform to quaternion
       Eigen::Quaternionf q(m);
       // Initializaing pose
       geometry_msgs::PoseStamped pipe_data; 
+      geometry_msgs::PoseStamped ekf_pipe_data; 
       // xi=fx*x/z+cx, yi=fy*y/z+cy
       pipe_data.pose.position.x = (altitude/1000)*(pipe_center.x - mIntrinsic(0, 2)) / mIntrinsic(0, 0); // x=z*(xi-cx)/fx
       pipe_data.pose.position.y = (altitude/1000)*(pipe_center.y - mIntrinsic(1, 2)) / mIntrinsic(1, 1); // y=z*(yi-cy)/fy
@@ -282,9 +286,20 @@ public:
       //pipe_data.pose.orientation.w = q.w();
       pipe_data.pose.orientation.x = 0;
       pipe_data.pose.orientation.y = 0;
-      pipe_data.pose.orientation.z = yaw + 3.14159265/2;
+      pipe_data.pose.orientation.z = yaw + M_PI/2;
       pipe_data.pose.orientation.w = 0;
+
+      // For Kalman filter
+      ekf_pipe_data.pose.position.x = pipe_center.x;
+      ekf_pipe_data.pose.position.y = pipe_center.y;
+      ekf_pipe_data.pose.position.z = altitude/1000;
+      ekf_pipe_data.pose.orientation.x = q.x();
+      ekf_pipe_data.pose.orientation.y = q.y();
+      ekf_pipe_data.pose.orientation.z = q.z();
+      ekf_pipe_data.pose.orientation.w = q.w();
+
       pipe_pub_.publish(pipe_data);
+      ekf_pipe_pub_.publish(ekf_pipe_data);
       //float altitude = pipe_data.pose.position.z;
     }
     imshow("output1", src);
