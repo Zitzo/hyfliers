@@ -123,7 +123,7 @@ class ImageProcessor
   image_transport::Subscriber img_sub_;
   image_transport::Publisher img_pub_;
   ros::Publisher pipe_pub_;
-  ros::Pubisher ekf_pub_;
+  ros::Publisher ekf_pub_;
   ros::Subscriber alt_sub_;
   // tf::TransformBroadcaster tf_br_;
 public:
@@ -299,7 +299,7 @@ public:
       ekf_pipe_data.pose.orientation.w = q.w();
 
       pipe_pub_.publish(pipe_data);
-      ekf_pipe_pub_.publish(ekf_pipe_data);
+      ekf_pub_.publish(ekf_pipe_data);
       //float altitude = pipe_data.pose.position.z;
     }
     imshow("output1", src);
