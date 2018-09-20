@@ -309,7 +309,7 @@ public:
       // For Kalman filter
       ekf_pipe_data.pose.position.x = pipe_center.x;
       ekf_pipe_data.pose.position.y = pipe_center.y;
-      ekf_pipe_data.pose.position.z = altitude/1000;
+      ekf_pipe_data.pose.position.z = altitude;
       ekf_pipe_data.pose.orientation.x = quaternion.x();
       ekf_pipe_data.pose.orientation.y = quaternion.y();
       ekf_pipe_data.pose.orientation.z = quaternion.z();
