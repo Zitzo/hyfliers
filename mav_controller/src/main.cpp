@@ -183,7 +183,7 @@ int main(int _argc, char **_argv)
 			msg.linear.x = uy; //uy;
 			msg.linear.y = ux; //ux;
 			msg.linear.z = uz;
-			msg.angular.z = 0; //az;	//rad/s
+			msg.angular.z = az;	//rad/s
 			// Hovering deactivated
 			msg.angular.x = 1;
 			msg.angular.y = 1;
