@@ -4,7 +4,7 @@
 #include <ros/ros.h>
 #include <rgbd_tools/state_filtering/ExtendedKalmanFilter.h>
 #include "geometry_msgs/Twist.h"
-#include "ardrone_autonomy/Navdata.h"
+#include <geometry_msgs/PoseStamped.h>
 #include "std_msgs/Float64.h"
 #include <ctime>
 #include <opencv2/opencv.hpp>
@@ -59,13 +59,20 @@ protected:
   }
 };
 
+struct Observation{
+  float altitude;
+  float xi;
+  float yi;
+  Eigen::Quaternionf quat;
+  std::chrono::steady_clock::time_point time;
+};
+
 class StateFilter
 {
 public:
   StateFilter(ros::NodeHandle &n);
 
-  void centroidCallback(const ardrone_autonomy::Navdata imu);
-  void IMUCallback(const ardrone_autonomy::Navdata imu);
+  void pipeDetectionCallback(const geometry_msgs::PoseStamped msg);
 
   // Initialize EKF with first observation of centroid and altitude
   void initializeKalmanFilter();
@@ -74,16 +81,15 @@ public:
 
 public:
   ros::NodeHandle nh_;
-  ros::Publisher pipe_pub_;
-  ros::Subscriber centroid_subscriber;
-  ros::Subscriber imu_subscriber;
+  ros::Publisher filtered_pub;
+  ros::Subscriber pipe_subscriber;
   Eigen::Matrix<float, 3, 3> mIntrinsic;
   PipeEKF ekf;
   bool mKalmanFilter = true;
   bool mKalmanInitialized = false;
   std::vector<double> centroid;
-  float altitude = 0;
-  bool newData = false;
+  Observation mLastObservation;
+  bool mNewData = false;
   std::chrono::steady_clock::time_point t0;
 };
 #include "StateFilter.inl"
