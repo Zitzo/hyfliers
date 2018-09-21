@@ -207,7 +207,7 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 ##añadimos el ejecutable video_capture
-add_executable(uav_pid src/main.cpp src/PID.cpp src/PID.h )
+add_executable(uav_pid src/main.cpp src/PID.cpp src/PID.h src/Joystick.h src/Joystick.inl)
 add_executable(pid_simulator src/main_simulation.cpp src/PID.cpp src/PID.h )
  ##incluir  directorios y librerias
 target_include_directories(uav_pid PUBLIC ${catkin_INCLUDE_DIRS})

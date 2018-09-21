@@ -9,8 +9,9 @@
 #include <ctime>
 #include <opencv2/opencv.hpp>
 #include <chrono>
+#include <math.h>
 
-class PipeEKF : public rgbd::ExtendedKalmanFilter<float, 4, 6>
+class PipeEKF : public rgbd::ExtendedKalmanFilter<float, 6, 6>
 {
 protected:
   void updateJf(const double _incT)
@@ -24,19 +25,37 @@ protected:
     float fy = 721.683494;
     float Cx = 283.809411;
     float Cy = 209.109682;
-    // mHZk << (fx * mXfk[0] / mXfk[2]) + Cx, (fy * mXfk[1] / mXfk[2]) + Cy, 1,
-    //     (fx * mXfk[3] / mXfk[5]) + Cx, (fy * mXfk[4] / mXfk[5]) + Cy, 1;
+    float x = mXfk[0];
+    float y = mXfk[1];
+    float z = mXfk[2];
+    float ax = mXfk[3];
+    float ay = mXfk[4];
+    float az = mXfk[5];
+    float a = -((fx * cos(ax) * (1 / cos(az))) / (z));
+    float b = (fx * cos(ax) * cos(ay)) * (x * (1 / cos(ay)) * (1 / cos(az)) - Cx) / (z * z);
+    float c = -((fx * x * cos(ax) * tan(az) * (1 / cos(az))) / z);
+    float d = -(fy / (z * ((-cos(az)) * (1 / cos(ay)) + sin(az) * tan(ax) * tan(ay))));
+    float e = (fy * cos(ax) * (Cy * cos(az) + y * (1 / cos(ax)) - Cy * sin(ay) * sin(az) * tan(ax))) / (z * z * ((-cos(az)) * (1 / cos(ay)) + sin(az) * tan(ax) * tan(ay)));
+    float f = (fy * cos(ax) * (Cy * cos(az) + y * (1 / cos(ax)) - Cy * sin(ay) * sin(az) * tan(ax)) * ((1 / cos(ay)) * sin(az) + cos(az) * tan(ax) * tan(ay))) / (z * ((-cos(az)) * (1 / cos(ay)) + sin(az) * tan(ax) * tan(ay)) * ((-cos(az)) * (1 / cos(ay)) + sin(az) * tan(ax) * tan(ay))) -
+              (fy * cos(ax) * ((-Cy) * sin(az) - Cy * cos(az) * sin(ay) * tan(ax))) / (z * ((-cos(az)) * (1 / cos(ay)) + sin(az) * tan(ax) * tan(ay)));
+    float h = -(((1 / cos(ax)) * (1 / cos(ay))) / sqrt(1 + tan(ax) * tan(ax) + tan(ay) * tan(ay)));
+
+    mHZk << a, 0, b, 0, 0, c,
+        0, d, e, 0, 0, f,
+        0, 0, h, 0, 0, 0,
+        0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0;
   }
   void updateJh()
   {
-    float fx = 726.429011;
-    float fy = 721.683494;
-    // mJh << fx / mXfk[0], 0, -fx * mXfk[0] / (mXfk[2] * mXfk[2]), 0, 0, 0,
-    //     0, fy / mXfk[1], -fy * mXfk[1] / (mXfk[2] * mXfk[2]), 0, 0, 0,
-    //     0, 0, 1, 0, 0, 0,
-    //     0, 0, 0, fx / mXfk[3], 0, -fx * mXfk[3] / (mXfk[5] * mXfk[5]),
-    //     0, 0, 0, 0, fy / mXfk[4], -fy * mXfk[4] / (mXfk[5] * mXfk[5]),
-    //     0, 0, 0, 0, 0, 1;
+    mJh << 1, 0, 0, 0, 0, 0,
+        0, 1, 0, 0, 0, 0,
+        0, 0, 1, 0, 0, 0,
+        0, 0, 0, 1, 0, 0,
+        0, 0, 0, 0, 1, 0,
+        0, 0, 0, 0, 0, 1;
   }
 };
 
@@ -46,6 +65,7 @@ public:
   StateFilter(ros::NodeHandle &n);
 
   void centroidCallback(const ardrone_autonomy::Navdata imu);
+  void IMUCallback(const ardrone_autonomy::Navdata imu);
 
   // Initialize EKF with first observation of centroid and altitude
   void initializeKalmanFilter();
@@ -62,7 +82,7 @@ public:
   bool mKalmanFilter = true;
   bool mKalmanInitialized = false;
   std::vector<double> centroid;
-  std::vector<double> p1;
+  float altitude = 0;
   bool newData = false;
   std::chrono::steady_clock::time_point t0;
 };

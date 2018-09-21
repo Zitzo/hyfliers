@@ -19,6 +19,7 @@
 #include "ardrone_autonomy/Navdata.h"
 #include <std_msgs/Empty.h>
 #include <mutex>
+#include "Joystick.h"
 
 using namespace cv;
 using namespace pcl;
@@ -51,6 +52,17 @@ void VelCallback(const geometry_msgs::TwistConstPtr vel)
 	// velCount++;
 	// velCount100ms++;
 }
+geometry_msgs::Twist command_vel(float _ux, float _uy, float _uz, float _ax, float _ay, float _az)
+{
+	geometry_msgs::Twist msg;
+	msg.linear.x = _ux;
+	msg.linear.y = _uy;
+	msg.linear.z = _uz;
+	msg.angular.x = _ax;
+	msg.angular.y = _ay;
+	msg.angular.z = _az;
+	return msg;
+}
 
 int main(int _argc, char **_argv)
 {
@@ -66,7 +78,7 @@ int main(int _argc, char **_argv)
 		while (run)
 		{
 			auto t0 = chrono::steady_clock::now();
-			std::cout << "1,2,3,4=move || 9=takeoff || 8=control || 7=fakefly || 0=land || 4=Battery and State || 30=change Z reference" << std::endl;
+			std::cout << "1,2,3,4=move || 9=takeoff || 8=control || 7=fakefly || 0=land || 10=Battery and State || 30=change Z reference" << std::endl;
 			std::cin >> input;
 			stateMutex.lock();
 			state = input;
@@ -94,10 +106,13 @@ int main(int _argc, char **_argv)
 				case 4:
 					std::cout << "Right" << std::endl;
 					break;
-				case 6:
-					std::cout << std::fixed << " Battery percent: " << batteryPercent << std::endl;
-					std::cout << std::fixed << " ARDrone state: " << droneState << std::endl;
+				case 5:
+					std::cout << " Yaw right" << std::endl;
 					break;
+				case 6:
+					std::cout << "Yaw left" << std::endl;
+					break;
+
 				case 7:
 					std::cout << "Fakefly mode" << std::endl;
 					break;
@@ -107,13 +122,18 @@ int main(int _argc, char **_argv)
 				case 9:
 					std::cout << "Takeoff" << std::endl;
 					break;
+				case 10:
+					std::cout << std::fixed << " Battery percent: " << batteryPercent << std::endl;
+					std::cout << std::fixed << " ARDrone state: " << droneState << std::endl;
+					break;
 				case 30:
 					float i;
 					std::cout << "Enter altitude: ";
 					std::cin >> i;
-					if (i>0 && i<4){
+					if (i > 0 && i < 4)
+					{
 						std::cout << "Changing altitude reference to " << i << std::endl;
-						zChange=i;
+						zChange = i;
 					}
 					break;
 				default:
@@ -125,7 +145,10 @@ int main(int _argc, char **_argv)
 	});
 	ros::init(_argc, _argv, "MAV_Controller");
 	ros::NodeHandle nh;
+	ros::NodeHandle controller_node;
 	ros::Rate loop_rate(20);
+
+	auto controller = Joystick(controller_node);
 
 	ros::Subscriber sub1 = nh.subscribe("/pipe_pose", 5, Callback);
 	ros::Subscriber alt_sub = nh.subscribe("/ardrone/navdata", 5, IMUCallback);
@@ -160,11 +183,12 @@ int main(int _argc, char **_argv)
 	{
 		pz.reference(zChange);
 	}
-	state = 10; // Start in hovering
+	state = -1; // Start in hovering
 	auto t0 = chrono::steady_clock::now();
-	bool run = true;
 	double keytime = 0.5; //Fixed command time
 	float v = 0.5;		  // Fixed velocity
+	bool fly = false;
+	bool run = true;
 	while (ros::ok() && run)
 	{
 		if (state == 8) // Control mode
@@ -179,14 +203,14 @@ int main(int _argc, char **_argv)
 			float uz = pz.update(linz, incT);
 			float az = gz.update(angZ, incT);
 
-			geometry_msgs::Twist msg;
-			msg.linear.x = uy; //uy;
-			msg.linear.y = ux; //ux;
-			msg.linear.z = uz;
-			msg.angular.z = 0; //az;	//rad/s
-			// Hovering deactivated
-			msg.angular.x = 1;
-			msg.angular.y = 1;
+			geometry_msgs::Twist msg = command_vel(uy, ux, uz, 0, 1, 1);
+			// msg.linear.x = uy; //uy;
+			// msg.linear.y = ux; //ux;
+			// msg.linear.z = uz;
+			// msg.angular.z = 0; //az;	//rad/s
+			// // Hovering deactivated
+			// msg.angular.x = 1;
+			// msg.angular.y = 1;
 
 			geometry_msgs::PoseStamped msgref;
 			msgref.header.stamp = rosTime;
@@ -218,15 +242,11 @@ int main(int _argc, char **_argv)
 			stateMutex.lock();
 			state = 10; //To hovering mode
 			stateMutex.unlock();
+			fly = true;
 		}
 		else if (state == 7) // fakefly mode
 		{
-			constant_cmd_vel.linear.x = 0.03;
-			constant_cmd_vel.linear.y = 0.03;
-			constant_cmd_vel.linear.z = 0.0;
-			constant_cmd_vel.angular.x = 0.0;
-			constant_cmd_vel.angular.y = 0.0;
-			constant_cmd_vel.angular.z = 0.03;
+			constant_cmd_vel = command_vel(0.03, 0.03, 0, 0, 0, 0.03);
 			vel_pub.publish(constant_cmd_vel);
 		}
 		else if (state == 0) // Land
@@ -248,12 +268,7 @@ int main(int _argc, char **_argv)
 			double time_start = (double)ros::Time::now().toSec();
 			while ((double)ros::Time::now().toSec() < time_start + keytime)
 			{
-				constant_cmd_vel.linear.x = v;
-				constant_cmd_vel.linear.y = 0.0;
-				constant_cmd_vel.linear.z = 0.0;
-				constant_cmd_vel.angular.x = 0.0;
-				constant_cmd_vel.angular.y = 0.0;
-				constant_cmd_vel.angular.z = 0.0;
+				constant_cmd_vel = command_vel(v, 0, 0, 0, 0, 0);
 				vel_pub.publish(constant_cmd_vel);
 				ros::spinOnce();
 				loop_rate.sleep();
@@ -267,12 +282,7 @@ int main(int _argc, char **_argv)
 			double time_start = (double)ros::Time::now().toSec();
 			while ((double)ros::Time::now().toSec() < time_start + keytime)
 			{
-				constant_cmd_vel.linear.x = -v;
-				constant_cmd_vel.linear.y = 0.0;
-				constant_cmd_vel.linear.z = 0.0;
-				constant_cmd_vel.angular.x = 0.0;
-				constant_cmd_vel.angular.y = 0.0;
-				constant_cmd_vel.angular.z = 0.0;
+				constant_cmd_vel = command_vel(-v, 0, 0, 0, 0, 0);
 				vel_pub.publish(constant_cmd_vel);
 				ros::spinOnce();
 				loop_rate.sleep();
@@ -286,12 +296,7 @@ int main(int _argc, char **_argv)
 			double time_start = (double)ros::Time::now().toSec();
 			while ((double)ros::Time::now().toSec() < time_start + keytime)
 			{
-				constant_cmd_vel.linear.x = 0.0;
-				constant_cmd_vel.linear.y = v;
-				constant_cmd_vel.linear.z = 0.0;
-				constant_cmd_vel.angular.x = 0.0;
-				constant_cmd_vel.angular.y = 0.0;
-				constant_cmd_vel.angular.z = 0.0;
+				constant_cmd_vel = command_vel(0, v, 0, 0, 0, 0);
 				vel_pub.publish(constant_cmd_vel);
 				ros::spinOnce();
 				loop_rate.sleep();
@@ -305,12 +310,7 @@ int main(int _argc, char **_argv)
 			double time_start = (double)ros::Time::now().toSec();
 			while ((double)ros::Time::now().toSec() < time_start + keytime)
 			{
-				constant_cmd_vel.linear.x = 0.0;
-				constant_cmd_vel.linear.y = -v;
-				constant_cmd_vel.linear.z = 0.0;
-				constant_cmd_vel.angular.x = 0.0;
-				constant_cmd_vel.angular.y = 0.0;
-				constant_cmd_vel.angular.z = 0.0;
+				constant_cmd_vel = command_vel(0, -v, 0, 0, 0, 0);
 				vel_pub.publish(constant_cmd_vel);
 				ros::spinOnce();
 				loop_rate.sleep();
@@ -319,19 +319,46 @@ int main(int _argc, char **_argv)
 			state = 10; // go hovering mode
 			stateMutex.unlock();
 		}
-		else if(state == 30)
+		else if (state == 5) // yaw left
+		{
+			double time_start = (double)ros::Time::now().toSec();
+			while ((double)ros::Time::now().toSec() < time_start + keytime)
+			{
+				constant_cmd_vel = command_vel(0, 0, 0, 0, 0, 0.2);
+				vel_pub.publish(constant_cmd_vel);
+				ros::spinOnce();
+				loop_rate.sleep();
+			}
+			stateMutex.lock();
+			state = 10; // go hovering mode
+			stateMutex.unlock();
+		}
+		else if (state == 6) // go left
+		{
+			double time_start = (double)ros::Time::now().toSec();
+			while ((double)ros::Time::now().toSec() < time_start + keytime)
+			{
+				constant_cmd_vel = command_vel(0, 0, 0, 0, 0, -0.2);
+				vel_pub.publish(constant_cmd_vel);
+				ros::spinOnce();
+				loop_rate.sleep();
+			}
+			stateMutex.lock();
+			state = 10; // go hovering mode
+			stateMutex.unlock();
+		}
+		else if (state == 30)
 		{
 			pz.reference(zChange);
 		}
+		else if (state == -1) // Ground mode
+		{
+		}
 		else // hovering mode
 		{
-			constant_cmd_vel.linear.x = 0.0;
-			constant_cmd_vel.linear.y = 0.0;
-			constant_cmd_vel.linear.z = 0.0;
-			constant_cmd_vel.angular.x = 0.0;
-			constant_cmd_vel.angular.y = 0.0;
-			constant_cmd_vel.angular.z = 0.0;
-			vel_pub.publish(constant_cmd_vel);
+			constant_cmd_vel = command_vel(0, 0, 0, 0, 0, 0);
+			if (fly)
+				vel_pub.publish(constant_cmd_vel);
 		}
 		ros::spinOnce();
 		loop_rate.sleep();
