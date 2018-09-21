@@ -203,14 +203,14 @@ int main(int _argc, char **_argv)
 			float uz = pz.update(linz, incT);
 			float az = gz.update(angZ, incT);
 
-			geometry_msgs::Twist msg;
-			msg.linear.x = uy; //uy;
-			msg.linear.y = ux; //ux;
-			msg.linear.z = uz;
-			msg.angular.z = az;	//rad/s
-			// Hovering deactivated
-			msg.angular.x = 1;
-			msg.angular.y = 1;
+			geometry_msgs::Twist msg = command_vel(uy, ux, uz, 0, 1, 1);
+			// msg.linear.x = uy; //uy;
+			// msg.linear.y = ux; //ux;
+			// msg.linear.z = uz;
+			// msg.angular.z = 0; //az;	//rad/s
+			// // Hovering deactivated
+			// msg.angular.x = 1;
+			// msg.angular.y = 1
 
 			geometry_msgs::PoseStamped msgref;
 			msgref.header.stamp = rosTime;
