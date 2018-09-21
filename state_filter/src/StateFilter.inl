@@ -37,6 +37,7 @@ void StateFilter::pipeDetectionCallback(const geometry_msgs::PoseStamped msg)
     mLastObservation.time = std::chrono::steady_clock::now();
     mLastObservation.quat = Eigen::Quaternionf(msg.pose.orientation.w, msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z);
     mNewData = true;
+    std::cout << "New data received" << std::endl;
 }
 
 /*------------------------------------------------------------------------------------------------------------------------*/
@@ -45,7 +46,7 @@ bool StateFilter::computeKalmanFilter(float _incT)
 {
 
     // Adding new observation
-    
+    ROS_INFO("New observation");
     Eigen::Matrix3f Rot = mLastObservation.quat.normalized().toRotationMatrix();
     double ax = atan2(Rot(2, 1), Rot(2, 2));
     double ay = atan2(-Rot(2, 0), sqrt(Rot(2, 1) * Rot(2, 1) + Rot(2, 2) * Rot(2, 2)));
