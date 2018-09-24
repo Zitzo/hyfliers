@@ -2,29 +2,6 @@ StateFilter::StateFilter(ros::NodeHandle &n) : nh_(n)
 {
     pipe_subscriber = n.subscribe("/ekf/pipe_pose", 10, &StateFilter::pipeDetectionCallback, this);
     filtered_pub = n.advertise<geometry_msgs::PoseStamped>("/ekf_pose", 1);
-    if (mNewData)
-    {
-
-        if (!mKalmanInitialized)
-        {
-            float fx = 726.429011;
-            float fy = 721.683494;
-            float Cx = 283.809411;
-            float Cy = 209.109682;
-            mIntrinsic << fx, 0, Cx,
-                0, fy, Cy,
-                0, 0, 1;
-            initializeKalmanFilter();
-            t0 = std::chrono::steady_clock::now();
-        }
-        else
-        {
-            float incT = std::chrono::duration_cast<std::chrono::milliseconds>(mLastObservation.time - t0).count() / 1000.0f;
-            computeKalmanFilter(incT);
-            t0 = std::chrono::steady_clock::now();
-        }
-        mNewData = false;
-    }
 }
 
 /*------------------------------------------------------------------------------------------------------------------------*/
@@ -36,27 +13,42 @@ void StateFilter::pipeDetectionCallback(const geometry_msgs::PoseStamped msg)
     mLastObservation.altitude = msg.pose.position.z;
     mLastObservation.time = std::chrono::steady_clock::now();
     mLastObservation.quat = Eigen::Quaternionf(msg.pose.orientation.w, msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z);
-    mNewData = true;
-    std::cout << "New data received" << std::endl;
+    ROS_INFO("New observation");
+    if (!mKalmanInitialized)
+    {
+        float fx = 726.429011;
+        float fy = 721.683494;
+        float Cx = 283.809411;
+        float Cy = 209.109682;
+        mIntrinsic << fx, 0, Cx,
+            0, fy, Cy,
+            0, 0, 1;
+        initializeKalmanFilter();
+        t0 = std::chrono::steady_clock::now();
+    }
+    else
+    {
+        float incT = std::chrono::duration_cast<std::chrono::milliseconds>(mLastObservation.time - t0).count() / 1000.0f;
+        // Adding new observation
+        computeKalmanFilter(incT);
+        t0 = std::chrono::steady_clock::now();
+    }
 }
-
+//rostopic pub /ekf/pipe_pose geotry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: 0, y: 0, z: 1}, orientation: {w: 1.0}}}'
 /*------------------------------------------------------------------------------------------------------------------------*/
 
 bool StateFilter::computeKalmanFilter(float _incT)
 {
-
-    // Adding new observation
-    ROS_INFO("New observation");
     Eigen::Matrix3f Rot = mLastObservation.quat.normalized().toRotationMatrix();
     double ax = atan2(Rot(2, 1), Rot(2, 2));
     double ay = atan2(-Rot(2, 0), sqrt(Rot(2, 1) * Rot(2, 1) + Rot(2, 2) * Rot(2, 2)));
     double az = atan2(Rot(1, 0), Rot(0, 0));
     Eigen::Matrix<float, 6, 1> z;
-    z << mLastObservation.xi, mLastObservation.yi , mLastObservation.altitude , ax, ay, az;
+    z << mLastObservation.xi, mLastObservation.yi, mLastObservation.altitude, ax, ay, az;
 
     // New step in EKF
     ekf.stepEKF(z, _incT);
-    Eigen::Matrix<float, 6, 1> filtered = ekf.state();
+    auto filtered = ekf.state();
     geometry_msgs::PoseStamped filteredPose;
     filteredPose.pose.position.x = filtered(0);
     filteredPose.pose.position.y = filtered(1);
@@ -64,9 +56,11 @@ bool StateFilter::computeKalmanFilter(float _incT)
     filteredPose.pose.orientation.x = filtered(3);
     filteredPose.pose.orientation.y = filtered(4);
     filteredPose.pose.orientation.z = filtered(5);
-    filteredPose.pose.orientation.w = 0; 
+    filteredPose.pose.orientation.w = 0;
+    std::cout << "Filtered pose: "
+              << " x: " << filtered(0) << " y: " << filtered(1) << " z: " << filtered(2);
+    std::cout << " ax: " << filtered(3) << " ay: " << filtered(4) << " az: " << filtered(5) << std::endl;
     filtered_pub.publish(filteredPose);
-
 }
 
 /*------------------------------------------------------------------------------------------------------------------------*/

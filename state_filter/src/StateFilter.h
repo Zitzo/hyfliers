@@ -31,6 +31,23 @@ protected:
     float ax = mXfk[3];
     float ay = mXfk[4];
     float az = mXfk[5];
+    float xi = -((fx * cos(ax) * cos(ay) * (x * (1 / cos(ay)) * (1 / cos(az)) - Cx)) / z);
+    float yi = -((fy * cos(ax) * (-(Cy * tan(ax) * sin(ay) * sin(az)) + y * (1 / cos(ax)) + Cy * cos(az))) / (z * (tan(ax) * tan(ay) * sin(az) - (1 / cos(ay)) * cos(az))));
+    float h = -(z * (1/cos(ax)) * (1/cos(ay))) / (sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1));
+    mHZk << xi, yi, h, ax, ay, az;
+  }
+  void updateJh()
+  {
+    float fx = 726.429011;
+    float fy = 721.683494;
+    float Cx = 283.809411;
+    float Cy = 209.109682;
+    float x = mXfk[0];
+    float y = mXfk[1];
+    float z = mXfk[2];
+    float ax = mXfk[3];
+    float ay = mXfk[4];
+    float az = mXfk[5];
     float a = -((fx * cos(ax) * (1 / cos(az))) / (z));
     float b = (fx * cos(ax) * cos(ay)) * (x * (1 / cos(ay)) * (1 / cos(az)) - Cx) / (z * z);
     float c = -((fx * x * cos(ax) * tan(az) * (1 / cos(az))) / z);
@@ -40,26 +57,17 @@ protected:
               (fy * cos(ax) * ((-Cy) * sin(az) - Cy * cos(az) * sin(ay) * tan(ax))) / (z * ((-cos(az)) * (1 / cos(ay)) + sin(az) * tan(ax) * tan(ay)));
     float h = -(((1 / cos(ax)) * (1 / cos(ay))) / sqrt(1 + tan(ax) * tan(ax) + tan(ay) * tan(ay)));
 
-    mHZk << a, 0, b, 0, 0, c,
+    mJh << a, 0, b, 0, 0, c,
         0, d, e, 0, 0, f,
         0, 0, h, 0, 0, 0,
         0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0;
-  }
-  void updateJh()
-  {
-    mJh << 1, 0, 0, 0, 0, 0,
-        0, 1, 0, 0, 0, 0,
-        0, 0, 1, 0, 0, 0,
-        0, 0, 0, 1, 0, 0,
-        0, 0, 0, 0, 1, 0,
-        0, 0, 0, 0, 0, 1;
   }
 };
 
-struct Observation{
+struct Observation
+{
   float altitude;
   float xi;
   float yi;
@@ -89,7 +97,6 @@ public:
   bool mKalmanInitialized = false;
   std::vector<double> centroid;
   Observation mLastObservation;
-  bool mNewData = false;
   std::chrono::steady_clock::time_point t0;
 };
 #include "StateFilter.inl"
