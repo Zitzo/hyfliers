@@ -31,9 +31,10 @@ protected:
     float ax = mXfk[3];
     float ay = mXfk[4];
     float az = mXfk[5];
-    float xi = x*fx/z+Cx;
-    float yi = y*fy/z+Cy;
-    float h = z / sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1);
+    float a = sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1);
+    float h = (-z * cos(ax) * cos(ay) + x * (cos(ax) * cos(az) * sin(ay) + sin(ax) * sin(az)) + y * (cos(az) * sin(ax) - cos(ax) * sin(ay) * sin(az))) / a;
+    float xi = (x * cos(ay) * cos(az) + z * sin(ay) - y * cos(ay) * sin(az)) * fx / (h * a) + Cx;
+    float yi = (-z * cos(ay) * sin(ax) + x * (cos(az) * sin(ax) * sin(ay) - cos(ax) * sin(az)) + y * (-cos(ax) * cos(az) - sin(ax) * sin(ay) * sin(az))) * fx / (h * a) + Cy;
     mHZk << xi, yi, h, ax, ay, az;
   }
   void updateJh()
@@ -48,18 +49,24 @@ protected:
     float ax = mXfk[3];
     float ay = mXfk[4];
     float az = mXfk[5];
-    float a = fx/z;
-    float b = -fx*x/(z*z);
-    float c = fy/z;
-    float d = -fy*y/(z*z);
-    float e = 1/ sqrt(1 + tan(ax) * tan(ax) + tan(ay) * tan(ay));
+    float landa = sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1);
+    float altitude = (-z * cos(ax) * cos(ay) + x * (cos(ax) * cos(az) * sin(ay) + sin(ax) * sin(az)) + y * (cos(az) * sin(ax) - cos(ax) * sin(ay) * sin(az))) / landa;
+    float a = fx * cos(ay) * cos(az) / (landa * altitude);
+    float b = -fx * cos(ay) * sin(az) / (landa * altitude);
+    float c = fx * sin(ay) / (landa * altitude);
+    float d = fy * (cos(az) * sin(ax) * sin(ay) - cos(ax) * sin(az)) / (landa * altitude);
+    float e = fy * (-cos(ax) * cos(az) - sin(ax) * sin(ay) * sin(az)) / (landa * altitude);
+    float f = -fy * (cos(ay) * sin(ax)) / (landa * altitude);
+    float g = (cos(ax) * cos(az) * sin(ay) + sin(ax) * sin(az)) / landa;
+    float h = (cos(az) * sin(ax) - cos(ax) * sin(ay) * sin(az)) / landa;
+    float i = -(cos(ax) * cos(ay)) / landa;
 
-    mJh << a, 0, b, 0, 0, 0,
-        0, c, d, 0, 0, 0,
-        0, 0, e, 0, 0, 0,
-        0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0;
+    mJh << a, b, c, 0, 0, 0,
+        d, e, f, 0, 0, 0,
+        g, h, i, 0, 0, 0,
+        0, 0, 0, 1, 0, 0,
+        0, 0, 0, 0, 1, 0,
+        0, 0, 0, 0, 0, 1;
   }
 };
 
@@ -92,7 +99,6 @@ public:
   PipeEKF ekf;
   bool mKalmanFilter = true;
   bool mKalmanInitialized = false;
-  std::vector<double> centroid;
   Observation mLastObservation;
   std::chrono::steady_clock::time_point t0;
 };

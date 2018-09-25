@@ -2,6 +2,13 @@ StateFilter::StateFilter(ros::NodeHandle &n) : nh_(n)
 {
     pipe_subscriber = n.subscribe("/ekf/pipe_pose", 10, &StateFilter::pipeDetectionCallback, this);
     filtered_pub = n.advertise<geometry_msgs::PoseStamped>("/ekf_pose", 1);
+    float fx = 726.429011;
+    float fy = 721.683494;
+    float Cx = 283.809411;
+    float Cy = 209.109682;
+    mIntrinsic << fx, 0, Cx,
+        0, fy, Cy,
+        0, 0, 1;
 }
 
 /*------------------------------------------------------------------------------------------------------------------------*/
@@ -15,13 +22,6 @@ void StateFilter::pipeDetectionCallback(const geometry_msgs::PoseStamped msg)
     mLastObservation.quat = Eigen::Quaternionf(msg.pose.orientation.w, msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z);
     if (!mKalmanInitialized)
     {
-        float fx = 726.429011;
-        float fy = 721.683494;
-        float Cx = 283.809411;
-        float Cy = 209.109682;
-        mIntrinsic << fx, 0, Cx,
-            0, fy, Cy,
-            0, 0, 1;
         initializeKalmanFilter();
         t0 = std::chrono::steady_clock::now();
     }
