@@ -209,14 +209,20 @@ include_directories(
 ##añadimos el ejecutable video_capture
 add_executable(uav_pid src/main.cpp src/PID.cpp src/PID.h src/Joystick.h src/Joystick.inl)
 add_executable(pid_simulator src/main_simulation.cpp src/PID.cpp src/PID.h )
+add_executable(first_flight src/Aquiles_ff.cpp)
  ##incluir  directorios y librerias
 target_include_directories(uav_pid PUBLIC ${catkin_INCLUDE_DIRS})
 target_link_libraries(uav_pid ${catkin_LIBRARIES} ) 
 target_include_directories(pid_simulator PUBLIC ${catkin_INCLUDE_DIRS})
 target_link_libraries(pid_simulator ${catkin_LIBRARIES} ) 
+target_include_directories(first_flight PUBLIC ${catkin_INCLUDE_DIRS})
+target_link_libraries(first_flight ${catkin_LIBRARIES} ) 
+
 
 ##incluir directorio y librerias de opencv porqe ros no las detecta
 target_include_directories(uav_pid PUBLIC ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(uav_pid LINK_PUBLIC ${OpenCV_LIBS})
 target_include_directories(pid_simulator PUBLIC ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(pid_simulator LINK_PUBLIC ${OpenCV_LIBS})
+target_include_directories(first_flight PUBLIC ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(first_flight LINK_PUBLIC ${OpenCV_LIBS})
