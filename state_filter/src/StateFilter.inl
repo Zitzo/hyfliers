@@ -13,7 +13,6 @@ void StateFilter::pipeDetectionCallback(const geometry_msgs::PoseStamped msg)
     mLastObservation.altitude = msg.pose.position.z;
     mLastObservation.time = std::chrono::steady_clock::now();
     mLastObservation.quat = Eigen::Quaternionf(msg.pose.orientation.w, msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z);
-    ROS_INFO("New observation");
     if (!mKalmanInitialized)
     {
         float fx = 726.429011;

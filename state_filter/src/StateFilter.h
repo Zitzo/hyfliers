@@ -31,9 +31,9 @@ protected:
     float ax = mXfk[3];
     float ay = mXfk[4];
     float az = mXfk[5];
-    float xi = -((fx * cos(ax) * cos(ay) * (x * (1 / cos(ay)) * (1 / cos(az)) - Cx)) / z);
-    float yi = -((fy * cos(ax) * (-(Cy * tan(ax) * sin(ay) * sin(az)) + y * (1 / cos(ax)) + Cy * cos(az))) / (z * (tan(ax) * tan(ay) * sin(az) - (1 / cos(ay)) * cos(az))));
-    float h = -(z * (1/cos(ax)) * (1/cos(ay))) / (sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1));
+    float xi = x*fx/z+Cx;
+    float yi = y*fy/z+Cy;
+    float h = z / sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1);
     mHZk << xi, yi, h, ax, ay, az;
   }
   void updateJh()
@@ -48,18 +48,15 @@ protected:
     float ax = mXfk[3];
     float ay = mXfk[4];
     float az = mXfk[5];
-    float a = -((fx * cos(ax) * (1 / cos(az))) / (z));
-    float b = (fx * cos(ax) * cos(ay)) * (x * (1 / cos(ay)) * (1 / cos(az)) - Cx) / (z * z);
-    float c = -((fx * x * cos(ax) * tan(az) * (1 / cos(az))) / z);
-    float d = -(fy / (z * ((-cos(az)) * (1 / cos(ay)) + sin(az) * tan(ax) * tan(ay))));
-    float e = (fy * cos(ax) * (Cy * cos(az) + y * (1 / cos(ax)) - Cy * sin(ay) * sin(az) * tan(ax))) / (z * z * ((-cos(az)) * (1 / cos(ay)) + sin(az) * tan(ax) * tan(ay)));
-    float f = (fy * cos(ax) * (Cy * cos(az) + y * (1 / cos(ax)) - Cy * sin(ay) * sin(az) * tan(ax)) * ((1 / cos(ay)) * sin(az) + cos(az) * tan(ax) * tan(ay))) / (z * ((-cos(az)) * (1 / cos(ay)) + sin(az) * tan(ax) * tan(ay)) * ((-cos(az)) * (1 / cos(ay)) + sin(az) * tan(ax) * tan(ay))) -
-              (fy * cos(ax) * ((-Cy) * sin(az) - Cy * cos(az) * sin(ay) * tan(ax))) / (z * ((-cos(az)) * (1 / cos(ay)) + sin(az) * tan(ax) * tan(ay)));
-    float h = -(((1 / cos(ax)) * (1 / cos(ay))) / sqrt(1 + tan(ax) * tan(ax) + tan(ay) * tan(ay)));
+    float a = fx/z;
+    float b = -fx*x/(z*z);
+    float c = fy/z;
+    float d = -fy*y/(z*z);
+    float e = 1/ sqrt(1 + tan(ax) * tan(ax) + tan(ay) * tan(ay));
 
-    mJh << a, 0, b, 0, 0, c,
-        0, d, e, 0, 0, f,
-        0, 0, h, 0, 0, 0,
+    mJh << a, 0, b, 0, 0, 0,
+        0, c, d, 0, 0, 0,
+        0, 0, e, 0, 0, 0,
         0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0;
