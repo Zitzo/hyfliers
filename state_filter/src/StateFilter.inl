@@ -33,7 +33,7 @@ void StateFilter::pipeDetectionCallback(const geometry_msgs::PoseStamped msg)
         t0 = std::chrono::steady_clock::now();
     }
 }
-//rostopic pub /ekf/pipe_pose geotry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: 0, y: 0, z: 1}, orientation: {w: 1.0}}}'
+
 /*------------------------------------------------------------------------------------------------------------------------*/
 
 bool StateFilter::computeKalmanFilter(float _incT)
@@ -76,9 +76,9 @@ void StateFilter::initializeKalmanFilter()
     double ax = atan2(Rot(2, 1), Rot(2, 2));
     double ay = atan2(-Rot(2, 0), sqrt(Rot(2, 1) * Rot(2, 1) + Rot(2, 2) * Rot(2, 2)));
     double az = atan2(Rot(1, 0), Rot(0, 0));
-    float Zc = (mLastObservation.altitude * sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1) / ((1 / cos(ax) * (1 / cos(ay)))));
-    float Xc = (mLastObservation.xi * (-Zc * (1 / cos(ax) * (1 / cos(ay)) / mIntrinsic(0, 0) + mIntrinsic(0, 2)) / ((1 / cos(az) * (1 / cos(ay))))));
-    float Yc = (mLastObservation.yi * (-Zc * (1 / cos(ax) * (1 / cos(ay)) / mIntrinsic(1, 1) + mIntrinsic(1, 2)) * (cos(ax) * cos(az) - sin(ax) * sin(ay) * sin(az))));
+    float Zc = (mLastObservation.altitude / sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1));
+    float Xc = (mLastObservation.xi - mIntrinsic(0, 2))*Zc/ mIntrinsic(0, 0);
+    float Yc = (mLastObservation.yi - mIntrinsic(1, 2))*Zc/ mIntrinsic(1, 1);
 
     Eigen::Matrix<float, 6, 1> x0;
     x0 << Xc, Yc, Zc, ax, ay, az;
