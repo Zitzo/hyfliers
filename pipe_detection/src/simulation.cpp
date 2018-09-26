@@ -285,9 +285,10 @@ public:
       // Getting angles for EKF
       auto euler = q.toRotationMatrix().eulerAngles(0, 1, 2);
       Eigen::Matrix3f m;
-      m = Eigen::AngleAxisf(euler[0], Eigen::Vector3f::UnitX())
-      * Eigen::AngleAxisf(euler[1],  Eigen::Vector3f::UnitY())
+      m = Eigen::AngleAxisf(euler[0]-M_PI, Eigen::Vector3f::UnitX())
+      * Eigen::AngleAxisf(euler[1]-M_PI,  Eigen::Vector3f::UnitY())
       * Eigen::AngleAxisf((yaw+M_PI/2), Eigen::Vector3f::UnitZ()); // changing value of yaw so that the position is in 0º
+      //cout << "Angles: " << euler[0]-M_PI << ", " << euler[1]-M_PI << ", " << yaw+M_PI/2 << endl;
       // transform to quaternion
       Eigen::Quaternionf quaternion(m);
       // Initializaing pose

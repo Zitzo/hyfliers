@@ -40,6 +40,15 @@ void Callback(const geometry_msgs::PoseStamped &msg)
 	
 }
 
+void Callback_ekf(const geometry_msgs::PoseStamped &msg)
+{
+	//linx = msg.pose.position.x;
+	//liny = -1*msg.pose.position.y;
+	//linz = -1*msg.pose.position.z;
+	//angZ = msg.pose.orientation.z;
+	
+}
+
 void IMUCallback(const geometry_msgs::PoseStamped::ConstPtr& imu) 
 { 
   linz = imu->pose.position.z; 
@@ -87,7 +96,8 @@ int main(int _argc, char **_argv)
 	ros::init(_argc, _argv, "publish_velocity");
 	ros::NodeHandle nh;
 
-	ros::Subscriber sub1 = nh.subscribe("/pipe_pose", 10, Callback);
+	ros::Subscriber sub1 = nh.subscribe("/ekf_pose", 10, Callback_ekf);
+	ros::Subscriber sub2 = nh.subscribe("/pipe_pose", 10, Callback);
 	ros::Subscriber alt_sub = nh.subscribe("/uav_1/mavros/local_position/pose", 10, IMUCallback); 
 	ros::Subscriber vel_sub	= nh.subscribe(nh.resolveName("cmd_vel"),50, VelCallback);
 	ros::Publisher vel_pub = nh.advertise<geometry_msgs::TwistStamped>("/simulated/cmd_vel", 1);
