@@ -152,7 +152,7 @@
       </model>
       <model name='unit_cylinder_0'>
         <pose frame=''>-0.057849 -6e-06 0.392418 1.57784 -0.001285 1.57079</pose>
-        <scale>0.84484 0.84484 8.52539</scale>
+        <scale>0.4 0.4 8.52539</scale>
         <link name='link'>
           <pose frame=''>-0.057849 -6e-06 0.392418 1.57784 -0.001285 1.57079</pose>
           <velocity>0.002877 0 -0.534895 1e-06 0.127921 0</velocity>

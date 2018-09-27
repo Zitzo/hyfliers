@@ -1,5 +1,3 @@
-
-
 <launch>
 
 <node pkg="pipe_detection" type="simulator" name="simulator" 

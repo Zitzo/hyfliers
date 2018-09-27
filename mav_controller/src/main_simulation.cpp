@@ -43,7 +43,7 @@ void Callback(const geometry_msgs::PoseStamped &msg)
 void Callback_ekf(const geometry_msgs::PoseStamped &msg)
 {
 	linx = msg.pose.position.y;
-	liny = -1*msg.pose.position.x;
+	liny = 1*msg.pose.position.x;
 	linz = -1*msg.pose.position.z;
 	angZ = msg.pose.orientation.z;
 	
