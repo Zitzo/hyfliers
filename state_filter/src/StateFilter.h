@@ -10,9 +10,15 @@
 #include <opencv2/opencv.hpp>
 #include <chrono>
 #include <math.h>
-
+//template <typename Type_, int D1_, int D2_>
 class PipeEKF : public rgbd::ExtendedKalmanFilter<float, 6, 6>
 {
+public:
+  // ExtendedKalmanFilter(Eigen::Matrix<float, 3, 3> _intrinsic)
+  // {
+  //   mIntrinsic = _intrinsic;
+  // }
+
 protected:
   void updateJf(const double _incT)
   {
@@ -21,10 +27,10 @@ protected:
   }
   void updateHZk()
   {
-    float fx = 726.429011;
-    float fy = 721.683494;
-    float Cx = 283.809411;
-    float Cy = 209.109682;
+    float fx = 674.3157444517138;
+    float fy = 674.3157444517138;
+    float Cx = 400.5;
+    float Cy = 300.5;
     float x = mXfk[0];
     float y = mXfk[1];
     float z = mXfk[2];
@@ -39,10 +45,10 @@ protected:
   }
   void updateJh()
   {
-    float fx = 726.429011;
-    float fy = 721.683494;
-    float Cx = 283.809411;
-    float Cy = 209.109682;
+    float fx = 674.3157444517138;
+    float fy = 674.3157444517138;
+    float Cx = 400.5;
+    float Cy = 300.5;
     float x = mXfk[0];
     float y = mXfk[1];
     float z = mXfk[2];
@@ -68,6 +74,9 @@ protected:
         0, 0, 0, 0, 1, 0,
         0, 0, 0, 0, 0, 1;
   }
+
+public:
+  Eigen::Matrix<float, 3, 3> mIntrinsic;
 };
 
 struct Observation
@@ -79,6 +88,7 @@ struct Observation
   std::chrono::steady_clock::time_point time;
 };
 
+template <typename Type_, int D1_, int D2_>
 class StateFilter
 {
 public:
@@ -94,6 +104,7 @@ public:
 public:
   ros::NodeHandle nh_;
   ros::Publisher filtered_pub;
+  ros::Publisher no_Filtered_pub;
   ros::Subscriber pipe_subscriber;
   Eigen::Matrix<float, 3, 3> mIntrinsic;
   PipeEKF ekf;

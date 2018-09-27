@@ -1,11 +1,13 @@
-StateFilter::StateFilter(ros::NodeHandle &n) : nh_(n)
+template<typename Type_, int D1_, int D2_>
+StateFilter<Type_,D1_,D2_>::StateFilter(ros::NodeHandle &n) : nh_(n)
 {
     pipe_subscriber = n.subscribe("/ekf/pipe_pose", 10, &StateFilter::pipeDetectionCallback, this);
     filtered_pub = n.advertise<geometry_msgs::PoseStamped>("/ekf_pose", 1);
-    float fx = 726.429011;
-    float fy = 721.683494;
-    float Cx = 283.809411;
-    float Cy = 209.109682;
+    no_Filtered_pub = n.advertise<geometry_msgs::PoseStamped>("/ekf_pose_nFilter", 1);
+    float fx = 674.3157444517138;
+    float fy = 674.3157444517138;
+    float Cx = 400.5;
+    float Cy = 300.5;
     mIntrinsic << fx, 0, Cx,
         0, fy, Cy,
         0, 0, 1;
@@ -13,7 +15,8 @@ StateFilter::StateFilter(ros::NodeHandle &n) : nh_(n)
 
 /*------------------------------------------------------------------------------------------------------------------------*/
 
-void StateFilter::pipeDetectionCallback(const geometry_msgs::PoseStamped msg)
+template<typename Type_, int D1_, int D2_>
+void StateFilter<Type_,D1_,D2_>::pipeDetectionCallback(const geometry_msgs::PoseStamped msg)
 {
     mLastObservation.xi = msg.pose.position.x;
     mLastObservation.yi = msg.pose.position.y;
@@ -36,7 +39,8 @@ void StateFilter::pipeDetectionCallback(const geometry_msgs::PoseStamped msg)
 
 /*------------------------------------------------------------------------------------------------------------------------*/
 
-bool StateFilter::computeKalmanFilter(float _incT)
+template<typename Type_, int D1_, int D2_>
+bool StateFilter<Type_,D1_,D2_>::computeKalmanFilter(float _incT)
 {
     Eigen::Matrix3f Rot = mLastObservation.quat.normalized().toRotationMatrix();
     double ax = atan2(Rot(2, 1), Rot(2, 2));
@@ -49,6 +53,7 @@ bool StateFilter::computeKalmanFilter(float _incT)
     ekf.stepEKF(z, _incT);
     auto filtered = ekf.state();
     geometry_msgs::PoseStamped filteredPose;
+    filteredPose.header.stamp = ros::Time::now();
     filteredPose.pose.position.x = filtered(0);
     filteredPose.pose.position.y = filtered(1);
     filteredPose.pose.position.z = filtered(2);
@@ -56,20 +61,35 @@ bool StateFilter::computeKalmanFilter(float _incT)
     filteredPose.pose.orientation.y = filtered(4);
     filteredPose.pose.orientation.z = filtered(5);
     filteredPose.pose.orientation.w = 0;
-    std::cout << "Filtered pose: "
-              << " x: " << filtered(0) << " y: " << filtered(1) << " z: " << filtered(2);
-    std::cout << " ax: " << filtered(3) << " ay: " << filtered(4) << " az: " << filtered(5) << std::endl;
     filtered_pub.publish(filteredPose);
+
+    Rot = mLastObservation.quat.normalized().toRotationMatrix();
+    ax = atan2(Rot(2, 1), Rot(2, 2));
+    ay = atan2(-Rot(2, 0), sqrt(Rot(2, 1) * Rot(2, 1) + Rot(2, 2) * Rot(2, 2)));
+    az = atan2(Rot(1, 0), Rot(0, 0));
+    float Zc = (mLastObservation.altitude / sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1));
+    float Xc = (mLastObservation.xi - mIntrinsic(0, 2))*Zc/ mIntrinsic(0, 0);
+    float Yc = (mLastObservation.yi - mIntrinsic(1, 2))*Zc/ mIntrinsic(1, 1);
+    geometry_msgs::PoseStamped noFilteredPose;
+    noFilteredPose.header.stamp = ros::Time::now();
+    noFilteredPose.pose.position.x = Xc;
+    noFilteredPose.pose.position.y = Yc;
+    noFilteredPose.pose.position.z = Zc;
+    noFilteredPose.pose.orientation.x = ax;
+    noFilteredPose.pose.orientation.y = ay;
+    noFilteredPose.pose.orientation.z = az;
+    noFilteredPose.pose.orientation.w = 0;
+    no_Filtered_pub.publish(noFilteredPose);
 }
 
 /*------------------------------------------------------------------------------------------------------------------------*/
-
-void StateFilter::initializeKalmanFilter()
+template<typename Type_, int D1_, int D2_>
+void StateFilter<Type_,D1_,D2_>::initializeKalmanFilter()
 {
     ROS_INFO("Initializating Extended Kalman Filter");
     Eigen::Matrix<float, 6, 6> mQ; // State covariance
     mQ.setIdentity();
-    mQ *= 0.01;
+    mQ *= 0.1;
     Eigen::Matrix<float, 6, 6> mR; // Observation covariance
     mR.setIdentity();
     Eigen::Matrix3f Rot = mLastObservation.quat.normalized().toRotationMatrix();
