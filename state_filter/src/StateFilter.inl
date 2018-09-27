@@ -99,6 +99,9 @@ void StateFilter<Type_,D1_,D2_>::initializeKalmanFilter()
     float Zc = (mLastObservation.altitude / sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1));
     float Xc = (mLastObservation.xi - mIntrinsic(0, 2))*Zc/ mIntrinsic(0, 0);
     float Yc = (mLastObservation.yi - mIntrinsic(1, 2))*Zc/ mIntrinsic(1, 1);
+    float Xm = Xc*cos(ay)*cos(ay) + Zc*(cos(ay)*cos(ay)*sin(ay) + sin(ax)*sin(az)) + Yc*(cos(ay)*sin(ax)*sin(ay) - cos(ay)*sin(az));
+    float Ym = Zc*(cos(ay)*sin(ay)*sin(az) - cos(ay)*sin(ax)) + Xc*cos(ay)*sin(az) + Yc*(cos(ay)*cos(ay) + sin(ax)*sin(ay)*sin(az));
+    float Zm = Zc*cos(ay)*cos(ay) + Yc*sin(ax)*cos(ay) - Xc*sin(ay);
 
     Eigen::Matrix<float, 6, 1> x0;
     x0 << Xc, Yc, Zc, ax, ay, az;

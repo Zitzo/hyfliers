@@ -33,25 +33,25 @@ float reference_z = 2;
 
 void Callback(const geometry_msgs::PoseStamped &msg)
 {
-	linx = msg.pose.position.x;
-	liny = msg.pose.position.y;
-	//linz = msg.pose.position.z;
-	angZ = msg.pose.orientation.z;
+	// linx = msg.pose.position.x;
+	// liny = msg.pose.position.y;
+	// linz = msg.pose.position.z;
+	// angZ = msg.pose.orientation.z;
 	
 }
 
 void Callback_ekf(const geometry_msgs::PoseStamped &msg)
 {
-	//linx = msg.pose.position.x;
-	//liny = -1*msg.pose.position.y;
-	//linz = -1*msg.pose.position.z;
-	//angZ = msg.pose.orientation.z;
+	linx = msg.pose.position.y;
+	liny = -1*msg.pose.position.x;
+	linz = -1*msg.pose.position.z;
+	angZ = msg.pose.orientation.z;
 	
 }
 
 void IMUCallback(const geometry_msgs::PoseStamped::ConstPtr& imu) 
 { 
-  linz = imu->pose.position.z; 
+  //linz = imu->pose.position.z; 
 } 
 
 void VelCallback(const geometry_msgs::TwistConstPtr vel)
@@ -109,9 +109,9 @@ int main(int _argc, char **_argv)
 
 	cv::Mat frame;
 
-	PID px(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
-	PID py(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
-	PID pz(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
+	PID px(0.4, 0.00, 0.0, -0.5, 0.5, -20, 20);
+	PID py(0.4, 0.00, 0.0, -0.5, 0.5, -20, 20);
+	PID pz(0.3, 0.00, 0.0, -0.5, 0.5, -20, 20);
 	PID gz(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
 
 	px.reference(0);
@@ -122,21 +122,25 @@ int main(int _argc, char **_argv)
 	px.enableRosInterface("/mav_controller/pid_x");
 	py.enableRosInterface("/mav_controller/pid_y");
 	pz.enableRosInterface("/mav_controller/pid_z");
-
+	float state;
 	std::thread zRefThread(
 		[&](){
 			for(;;){
 				std::cout << "Set Z reference: ";
-				std::cin >> reference_z;
+				std::cin >> state;
 
-				if (reference_z == 0)
+				if (state == 0)
 				ual.land();
-				if (reference_z == -1)
+				if (state == -1)
 				{
 				ual.takeOff(flight_level);
 				}
-				if (reference_z > 0)
-				pz.reference(reference_z);
+				if (state == -2)
+				{
+				ual.goToWaypoint(waypoint);
+				}
+				if (state > 0)
+				pz.reference(state);
 			}
 		}
 	);
@@ -150,9 +154,8 @@ int main(int _argc, char **_argv)
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() / 1000.0f;
-		//std::cout << incT << std::endl;
 		t0 = t1;
-		if (reference_z > 0)
+		if (reference_z > 0 && state >0)
 		{
 		float ux = px.update(linx, incT);
 		float uy = py.update(liny, incT);
