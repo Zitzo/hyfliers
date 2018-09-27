@@ -20,6 +20,7 @@
 #include <std_msgs/Empty.h>
 #include <mutex>
 #include "Joystick.h"
+#include <geometry_msgs/TwistStamped.h>
 
 using namespace cv;
 using namespace pcl;
@@ -47,20 +48,21 @@ void IMUCallback(const ardrone_autonomy::Navdata imu)
 	droneState = imu.state;
 }
 
-void VelCallback(const geometry_msgs::TwistConstPtr vel)
+void VelCallback(const geometry_msgs::TwistStampedConstPtr vel)
 {
 	// velCount++;
 	// velCount100ms++;
 }
-geometry_msgs::Twist command_vel(float _ux, float _uy, float _uz, float _ax, float _ay, float _az)
+geometry_msgs::TwistStamped command_vel(float _ux, float _uy, float _uz, float _ax, float _ay, float _az)
 {
-	geometry_msgs::Twist msg;
-	msg.linear.x = _ux;
-	msg.linear.y = _uy;
-	msg.linear.z = _uz;
-	msg.angular.x = _ax;
-	msg.angular.y = _ay;
-	msg.angular.z = _az;
+	geometry_msgs::TwistStamped msg;
+	msg.header.stamp = ros::Time::now();
+	msg.twist.linear.x = _ux;
+	msg.twist.linear.y = _uy;
+	msg.twist.linear.z = _uz;
+	msg.twist.angular.x = _ax;
+	msg.twist.angular.y = _ay;
+	msg.twist.angular.z = _az;
 	return msg;
 }
 
@@ -153,7 +155,7 @@ int main(int _argc, char **_argv)
 	ros::Subscriber sub1 = nh.subscribe("/pipe_pose", 5, Callback);
 	ros::Subscriber alt_sub = nh.subscribe("/ardrone/navdata", 5, IMUCallback);
 	ros::Subscriber vel_sub = nh.subscribe(nh.resolveName("cmd_vel"), 5, VelCallback);
-	ros::Publisher vel_pub = nh.advertise<geometry_msgs::Twist>(nh.resolveName("cmd_vel"), 1);
+	ros::Publisher vel_pub = nh.advertise<geometry_msgs::TwistStamped>(nh.resolveName("cmd_vel"), 1);
 	ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 5);
 	ros::Publisher ref_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 5);
 
@@ -164,7 +166,7 @@ int main(int _argc, char **_argv)
 	ros::AsyncSpinner spinner(4);
 	spinner.start();
 
-	geometry_msgs::Twist constant_cmd_vel;
+	geometry_msgs::TwistStamped constant_cmd_vel;
 
 	PID px(1.0, 0.01, 0.3, -0.5, 0.5, -20, 20);
 	PID py(1.0, 0.01, 0.3, -0.5, 0.5, -20, 20);
@@ -203,7 +205,7 @@ int main(int _argc, char **_argv)
 			float uz = pz.update(linz, incT);
 			float az = gz.update(angZ, incT);
 
-			geometry_msgs::Twist msg = command_vel(uy, ux, uz, 0, 1, 1);
+			geometry_msgs::TwistStamped msg = command_vel(uy, ux, uz, 0, 1, 1);
 			// msg.linear.x = uy; //uy;
 			// msg.linear.y = ux; //ux;
 			// msg.linear.z = uz;
@@ -346,6 +348,10 @@ int main(int _argc, char **_argv)
 			stateMutex.lock();
 			state = 10; // go hovering mode
 			stateMutex.unlock();
+		}
+		else if (state == 99)
+		{
+			// Joystick control
 		}
 		else if (state == 30)
 		{
