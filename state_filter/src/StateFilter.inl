@@ -89,9 +89,10 @@ void StateFilter<Type_,D1_,D2_>::initializeKalmanFilter()
     ROS_INFO("Initializating Extended Kalman Filter");
     Eigen::Matrix<float, 6, 6> mQ; // State covariance
     mQ.setIdentity();
-    mQ *= 0.1;
+    //mQ *= 0.1;
     Eigen::Matrix<float, 6, 6> mR; // Observation covariance
     mR.setIdentity();
+    //mR *= 0.1;
     Eigen::Matrix3f Rot = mLastObservation.quat.normalized().toRotationMatrix();
     double ax = atan2(Rot(2, 1), Rot(2, 2));
     double ay = atan2(-Rot(2, 0), sqrt(Rot(2, 1) * Rot(2, 1) + Rot(2, 2) * Rot(2, 2)));
