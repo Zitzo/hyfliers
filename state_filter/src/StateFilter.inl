@@ -1,5 +1,5 @@
-template<typename Type_, int D1_, int D2_>
-StateFilter<Type_,D1_,D2_>::StateFilter(ros::NodeHandle &n) : nh_(n)
+template <typename Type_, int D1_, int D2_>
+StateFilter<Type_, D1_, D2_>::StateFilter(ros::NodeHandle &n) : nh_(n)
 {
     pipe_subscriber = n.subscribe("/ekf/pipe_pose", 10, &StateFilter::pipeDetectionCallback, this);
     filtered_pub = n.advertise<geometry_msgs::PoseStamped>("/ekf_pose", 1);
@@ -15,8 +15,8 @@ StateFilter<Type_,D1_,D2_>::StateFilter(ros::NodeHandle &n) : nh_(n)
 
 /*------------------------------------------------------------------------------------------------------------------------*/
 
-template<typename Type_, int D1_, int D2_>
-void StateFilter<Type_,D1_,D2_>::pipeDetectionCallback(const geometry_msgs::PoseStamped msg)
+template <typename Type_, int D1_, int D2_>
+void StateFilter<Type_, D1_, D2_>::pipeDetectionCallback(const geometry_msgs::PoseStamped msg)
 {
     mLastObservation.xi = msg.pose.position.x;
     mLastObservation.yi = msg.pose.position.y;
@@ -39,8 +39,8 @@ void StateFilter<Type_,D1_,D2_>::pipeDetectionCallback(const geometry_msgs::Pose
 
 /*------------------------------------------------------------------------------------------------------------------------*/
 
-template<typename Type_, int D1_, int D2_>
-bool StateFilter<Type_,D1_,D2_>::computeKalmanFilter(float _incT)
+template <typename Type_, int D1_, int D2_>
+bool StateFilter<Type_, D1_, D2_>::computeKalmanFilter(float _incT)
 {
     Eigen::Matrix3f Rot = mLastObservation.quat.normalized().toRotationMatrix();
     double ax = atan2(Rot(2, 1), Rot(2, 2));
@@ -68,8 +68,8 @@ bool StateFilter<Type_,D1_,D2_>::computeKalmanFilter(float _incT)
     ay = atan2(-Rot(2, 0), sqrt(Rot(2, 1) * Rot(2, 1) + Rot(2, 2) * Rot(2, 2)));
     az = atan2(Rot(1, 0), Rot(0, 0));
     float Zc = (mLastObservation.altitude / sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1));
-    float Xc = (mLastObservation.xi - mIntrinsic(0, 2))*Zc/ mIntrinsic(0, 0);
-    float Yc = (mLastObservation.yi - mIntrinsic(1, 2))*Zc/ mIntrinsic(1, 1);
+    float Xc = (mLastObservation.xi - mIntrinsic(0, 2)) * Zc / mIntrinsic(0, 0);
+    float Yc = (mLastObservation.yi - mIntrinsic(1, 2)) * Zc / mIntrinsic(1, 1);
     geometry_msgs::PoseStamped noFilteredPose;
     noFilteredPose.header.stamp = ros::Time::now();
     noFilteredPose.pose.position.x = Xc;
@@ -83,26 +83,29 @@ bool StateFilter<Type_,D1_,D2_>::computeKalmanFilter(float _incT)
 }
 
 /*------------------------------------------------------------------------------------------------------------------------*/
-template<typename Type_, int D1_, int D2_>
-void StateFilter<Type_,D1_,D2_>::initializeKalmanFilter()
+template <typename Type_, int D1_, int D2_>
+void StateFilter<Type_, D1_, D2_>::initializeKalmanFilter()
 {
     ROS_INFO("Initializating Extended Kalman Filter");
     Eigen::Matrix<float, 6, 6> mQ; // State covariance
     mQ.setIdentity();
-    //mQ *= 0.1;
+    mQ *= 0.1;
     Eigen::Matrix<float, 6, 6> mR; // Observation covariance
     mR.setIdentity();
-    //mR *= 0.1;
+    mR *= 0.1;
     Eigen::Matrix3f Rot = mLastObservation.quat.normalized().toRotationMatrix();
     double ax = atan2(Rot(2, 1), Rot(2, 2));
     double ay = atan2(-Rot(2, 0), sqrt(Rot(2, 1) * Rot(2, 1) + Rot(2, 2) * Rot(2, 2)));
     double az = atan2(Rot(1, 0), Rot(0, 0));
-    float Zc = (mLastObservation.altitude / sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1));
-    float Xc = (mLastObservation.xi - mIntrinsic(0, 2))*Zc/ mIntrinsic(0, 0);
-    float Yc = (mLastObservation.yi - mIntrinsic(1, 2))*Zc/ mIntrinsic(1, 1);
+    float Zc = mLastObservation.altitude / sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1);
+    float Xc = (mLastObservation.xi - mIntrinsic(0, 2)) * Zc / mIntrinsic(0, 0);
+    float Yc = (mLastObservation.yi - mIntrinsic(1, 2)) * Zc / mIntrinsic(1, 1);
+    float Xm = -Xc * sin(az) * cos(ay) + Yc * (-sin(ax) * sin(ay) * sin(az) + cos(ax) * cos(az)) + Zc * (sin(ax) * cos(az) + sin(ay) * sin(az) * cos(ax));
+    float Ym = Xc * cos(ay) * cos(az) + Yc * (sin(ax) * sin(ay) * cos(az) + sin(az) * cos(ax)) + Zc * (sin(ax) * sin(az) - sin(ay) * cos(ax) * cos(az));
+    float Zm = -Xc * sin(ay) + Yc * sin(ax) * cos(ay) - Zc * cos(ax) * cos(ay);
 
     Eigen::Matrix<float, 6, 1> x0;
-    x0 << Xc, Yc, Zc, ax, ay, az;
+    x0 << Xm, Ym, Zm, ax, ay, az;
 
     ekf.setUpEKF(mQ, mR, x0);
     mKalmanInitialized = true;

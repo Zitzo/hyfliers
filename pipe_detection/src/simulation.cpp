@@ -11,7 +11,8 @@
 #include <rgbd_tools/segmentation/color_clustering/types/ccsCreation.h>
 #include <iostream>
 #include <opencv2/opencv.hpp>
-#include <ctime>
+//#include <ctime>
+#include <time.h>
 #include "std_msgs/Float64.h"
 #include <geometry_msgs/Twist.h>
 #include "ardrone_autonomy/Navdata.h"
@@ -150,7 +151,7 @@ public:
     pipe_pub_ = n.advertise<geometry_msgs::PoseStamped>("/pipe_pose", 1000);
     ekf_pub_ = n.advertise<geometry_msgs::PoseStamped>("/ekf/pipe_pose", 1);
     alt_sub_ = n.subscribe("/uav_1/mavros/local_position/pose", 1000, IMUCallback);
-
+    std::cout << "as " << std::endl;
     //pipe_pub_ = n.advertise<geometry_msgs::Twist>("/pipe_pose", 1000);
 
     // Camera intrinsics
@@ -187,7 +188,6 @@ public:
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
-
     cv::Mat src = cv_ptr->image;
     //cv::Mat img = cv::imread("/home/alejandro/pipe_detection/src/pipe_detection/src/out28.jpg", CV_LOAD_IMAGE_COLOR);
     // cv::waitkey(30);
@@ -287,10 +287,20 @@ public:
       Eigen::Matrix3f m;
       m = Eigen::AngleAxisf(euler[0]-M_PI, Eigen::Vector3f::UnitX())
       * Eigen::AngleAxisf(euler[1]-M_PI,  Eigen::Vector3f::UnitY())
-      * Eigen::AngleAxisf((yaw+M_PI/2), Eigen::Vector3f::UnitZ()); // changing value of yaw so that the position is in 0º
-      //cout << "Angles: " << euler[0]-M_PI << ", " << euler[1]-M_PI << ", " << yaw+M_PI/2 << endl;
-      // transform to quaternion
+      * Eigen::AngleAxisf((yaw+M_PI/2), Eigen::Vector3f::UnitZ()); // changing value of yaw so that the position is in 
       Eigen::Quaternionf quaternion(m);
+      Eigen::Matrix3f Rot = quaternion.normalized().toRotationMatrix();
+      
+      double ax = atan2(Rot(2, 1), Rot(2, 2));
+      
+      double ay = atan2(-Rot(2, 0), sqrt(Rot(2, 1) * Rot(2, 1) + Rot(2, 2) * Rot(2, 2)));
+      
+      double az = atan2(Rot(1, 0), Rot(0, 0));
+      // cout << "Angles: " << ax << ", " << ay << ", " << az << endl;
+      // cout << "Angles no f" << yaw + 3.14159265/2 << std::endl;
+      // cout << "Real quat: " << q.x() << " " << q.y() << " " << q.z()<< " " << q.w() <<endl;
+      // cout << "Real angle: " << euler[0] << " " << euler[1] << " " << euler[2] << endl;
+
       // Initializaing pose
       geometry_msgs::PoseStamped pipe_data; 
       geometry_msgs::PoseStamped ekf_pipe_data; 
@@ -302,8 +312,8 @@ public:
       //pipe_data.pose.orientation.y = q.y();
       //pipe_data.pose.orientation.z = q.z() + 3.14159265/2;
       //pipe_data.pose.orientation.w = q.w();
-      pipe_data.pose.orientation.x = 0;
-      pipe_data.pose.orientation.y = 0;
+      pipe_data.pose.orientation.x = euler[0];
+      pipe_data.pose.orientation.y = euler[1];
       pipe_data.pose.orientation.z = yaw + 3.14159265/2;
       pipe_data.pose.orientation.w = 0;
 
@@ -320,6 +330,12 @@ public:
       ekf_pub_.publish(ekf_pipe_data);
       //float altitude = pipe_data.pose.position.z;
     }
+    Point X0(400,0);
+    Point X1(400,800);
+    Point Y0(0,300);
+    Point Y1(800,300);
+    cv::line(src,cv::Point(400,0),cv::Point(400,800),cv::Scalar(0,200,0), 2, 8);
+    cv::line(src,cv::Point(0,300),cv::Point(800,300),cv::Scalar(0,200,0), 2, 8);
     imshow("output1", src);
     //imshow("output2", gray);
     //imshow("output3", bw);
