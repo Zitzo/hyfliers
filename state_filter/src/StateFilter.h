@@ -38,9 +38,9 @@ protected:
     float ay = mXfk[4];
     float az = mXfk[5];
     float a = sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1);
-    float h = (Xm * sin(ax) * cos(ay) - Ym * sin(ay) - Zm * cos(ax) * cos(ay)) / a;
-    float xi = cx + fx * (Xm * (sin(ax) * sin(ay) * cos(az) - sin(az) * cos(ax)) + Ym * cos(ay) * cos(az) + Zm * (-sin(ax) * sin(az) - sin(ay) * cos(ax) * cos(az))) / (Xm * sin(ax) * cos(ay) - Ym * sin(ay) - Zm * cos(ax) * cos(ay));
-    float yi = cy + fy * (Xm * (sin(ax) * sin(ay) * sin(az) + cos(ax) * cos(az)) + Ym * sin(az) * cos(ay) + Zm * (sin(ax) * cos(az) - sin(ay) * sin(az) * cos(ax))) / (Xm * sin(ax) * cos(ay) - Ym * sin(ay) - Zm * cos(ax) * cos(ay));
+    float h = (-Xm*sin(ay) + Ym*sin(ax)*cos(ay) - Zm*cos(ax)*cos(ay))/a;
+    float xi = cx + fx*(Xm*cos(ay)*cos(az) + Ym*(sin(ax)*sin(ay)*cos(az) - sin(az)*cos(ax)) + Zm*(-sin(ax)*sin(az) - sin(ay)*cos(ax)*cos(az)))/(-Xm*sin(ay) + Ym*sin(ax)*cos(ay) - Zm*cos(ax)*cos(ay));
+    float yi = cy + fy*(Xm*sin(az)*cos(ay) + Ym*(sin(ax)*sin(ay)*sin(az) + cos(ax)*cos(az)) + Zm*(sin(ax)*cos(az) - sin(ay)*sin(az)*cos(ax)))/(-Xm*sin(ay) + Ym*sin(ax)*cos(ay) - Zm*cos(ax)*cos(ay));
     mHZk << xi, yi, h, ax, ay, az;
   }
   void updateJh()
@@ -58,23 +58,18 @@ protected:
 
     float landa = sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1);
 
-    float a = fx * (sin(ax) * sin(ay) * cos(az) - sin(az) * cos(ax)) / (Xm * sin(ax) * cos(ay) - Ym * sin(ay) - Zm * cos(ax) * cos(ay)) - fx * (Xm * (sin(ax) * sin(ay) * cos(az) - sin(az) * cos(ax)) + Ym * cos(ay) * cos(az) + Zm * (-sin(ax) * sin(az) - sin(ay) * cos(ax) * cos(az))) * sin(ax) * cos(ay) / pow(Xm * sin(ax) * cos(ay) - Ym * sin(ay) - Zm * cos(ax) * cos(ay), 2);
+    float a = fx*cos(ay)*cos(az)/(-Xm*sin(ay) + Ym*sin(ax)*cos(ay) - Zm*cos(ax)*cos(ay)) + fx*(Xm*cos(ay)*cos(az) + Ym*(sin(ax)*sin(ay)*cos(az) - sin(az)*cos(ax)) + Zm*(-sin(ax)*sin(az) - sin(ay)*cos(ax)*cos(az)))*sin(ay)/pow(-Xm*sin(ay) + Ym*sin(ax)*cos(ay) - Zm*cos(ax)*cos(ay), 2);
+    float b = fx*(sin(ax)*sin(ay)*cos(az) - sin(az)*cos(ax))/(-Xm*sin(ay) + Ym*sin(ax)*cos(ay) - Zm*cos(ax)*cos(ay)) - fx*(Xm*cos(ay)*cos(az) + Ym*(sin(ax)*sin(ay)*cos(az) - sin(az)*cos(ax)) + Zm*(-sin(ax)*sin(az) - sin(ay)*cos(ax)*cos(az)))*sin(ax)*cos(ay)/pow(-Xm*sin(ay) + Ym*sin(ax)*cos(ay) - Zm*cos(ax)*cos(ay), 2);
+    float c = fx*(-sin(ax)*sin(az) - sin(ay)*cos(ax)*cos(az))/(-Xm*sin(ay) + Ym*sin(ax)*cos(ay) - Zm*cos(ax)*cos(ay)) + fx*(Xm*cos(ay)*cos(az) + Ym*(sin(ax)*sin(ay)*cos(az) - sin(az)*cos(ax)) + Zm*(-sin(ax)*sin(az) - sin(ay)*cos(ax)*cos(az)))*cos(ax)*cos(ay)/pow(-Xm*sin(ay) + Ym*sin(ax)*cos(ay) - Zm*cos(ax)*cos(ay), 2);
+    float d = fy*sin(az)*cos(ay)/(-Xm*sin(ay) + Ym*sin(ax)*cos(ay) - Zm*cos(ax)*cos(ay)) + fy*(Xm*sin(az)*cos(ay) + Ym*(sin(ax)*sin(ay)*sin(az) + cos(ax)*cos(az)) + Zm*(sin(ax)*cos(az) - sin(ay)*sin(az)*cos(ax)))*sin(ay)/pow(-Xm*sin(ay) + Ym*sin(ax)*cos(ay) - Zm*cos(ax)*cos(ay), 2);
+    float e = fy*(sin(ax)*sin(ay)*sin(az) + cos(ax)*cos(az))/(-Xm*sin(ay) + Ym*sin(ax)*cos(ay) - Zm*cos(ax)*cos(ay)) - fy*(Xm*sin(az)*cos(ay) + Ym*(sin(ax)*sin(ay)*sin(az) + cos(ax)*cos(az)) + Zm*(sin(ax)*cos(az) - sin(ay)*sin(az)*cos(ax)))*sin(ax)*cos(ay)/pow(-Xm*sin(ay) + Ym*sin(ax)*cos(ay) - Zm*cos(ax)*cos(ay), 2);
+    float f = fy*(sin(ax)*cos(az) - sin(ay)*sin(az)*cos(ax))/(-Xm*sin(ay) + Ym*sin(ax)*cos(ay) - Zm*cos(ax)*cos(ay)) + fy*(Xm*sin(az)*cos(ay) + Ym*(sin(ax)*sin(ay)*sin(az) + cos(ax)*cos(az)) + Zm*(sin(ax)*cos(az) - sin(ay)*sin(az)*cos(ax)))*cos(ax)*cos(ay)/pow(-Xm*sin(ay) + Ym*sin(ax)*cos(ay) - Zm*cos(ax)*cos(ay), 2);
 
-    float b = fx * (Xm * (sin(ax) * sin(ay) * cos(az) - sin(az) * cos(ax)) + Ym * cos(ay) * cos(az) + Zm * (-sin(ax) * sin(az) - sin(ay) * cos(ax) * cos(az))) * sin(ay) / pow(Xm * sin(ax) * cos(ay) - Ym * sin(ay) - Zm * cos(ax) * cos(ay), 2) + fx * cos(ay) * cos(az) / (Xm * sin(ax) * cos(ay) - Ym * sin(ay) - Zm * cos(ax) * cos(ay));
+    float g = -sin(ay) / landa;
 
-    float c = fx * (-sin(ax) * sin(az) - sin(ay) * cos(ax) * cos(az)) / (Xm * sin(ax) * cos(ay) - Ym * sin(ay) - Zm * cos(ax) * cos(ay)) + fx * (Xm * (sin(ax) * sin(ay) * cos(az) - sin(az) * cos(ax)) + Ym * cos(ay) * cos(az) + Zm * (-sin(ax) * sin(az) - sin(ay) * cos(ax) * cos(az))) * cos(ax) * cos(ay) / pow(Xm * sin(ax) * cos(ay) - Ym * sin(ay) - Zm * cos(ax) * cos(ay), 2);
+    float h = sin(ax)*cos(ay) / landa;
 
-    float d = fy * (sin(ax) * sin(ay) * sin(az) + cos(ax) * cos(az)) / (Xm * sin(ax) * cos(ay) - Ym * sin(ay) - Zm * cos(ax) * cos(ay)) - fy * (Xm * (sin(ax) * sin(ay) * sin(az) + cos(ax) * cos(az)) + Ym * sin(az) * cos(ay) + Zm * (sin(ax) * cos(az) - sin(ay) * sin(az) * cos(ax))) * sin(ax) * cos(ay) / pow(Xm * sin(ax) * cos(ay) - Ym * sin(ay) - Zm * cos(ax) * cos(ay), 2);
-
-    float e = fy * (Xm * (sin(ax) * sin(ay) * sin(az) + cos(ax) * cos(az)) + Ym * sin(az) * cos(ay) + Zm * (sin(ax) * cos(az) - sin(ay) * sin(az) * cos(ax))) * sin(ay) / pow(Xm * sin(ax) * cos(ay) - Ym * sin(ay) - Zm * cos(ax) * cos(ay), 2) + fy * sin(az) * cos(ay) / (Xm * sin(ax) * cos(ay) - Ym * sin(ay) - Zm * cos(ax) * cos(ay));
-
-    float f = fy * (sin(ax) * cos(az) - sin(ay) * sin(az) * cos(ax)) / (Xm * sin(ax) * cos(ay) - Ym * sin(ay) - Zm * cos(ax) * cos(ay)) + fy * (Xm * (sin(ax) * sin(ay) * sin(az) + cos(ax) * cos(az)) + Ym * sin(az) * cos(ay) + Zm * (sin(ax) * cos(az) - sin(ay) * sin(az) * cos(ax))) * cos(ax) * cos(ay) / pow(Xm * sin(ax) * cos(ay) - Ym * sin(ay) - Zm * cos(ax) * cos(ay), 2);
-
-    float g = sin(ax) * cos(ay) / landa;
-
-    float h = -sin(ay) / landa;
-
-    float i = -cos(ax) * cos(ay) / landa;
+    float i = -cos(ax)*cos(ay) / landa;
 
     mJh << a, b, c, 0, 0, 0,
         d, e, f, 0, 0, 0,

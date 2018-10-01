@@ -33,25 +33,25 @@ float reference_z = 2;
 
 void Callback(const geometry_msgs::PoseStamped &msg)
 {
-	linx = msg.pose.position.x;
-	liny = msg.pose.position.y;
+	//linx = msg.pose.position.x;
+	//liny = msg.pose.position.y;
 	//linz = msg.pose.position.z;
-	angZ = msg.pose.orientation.z;
+	//angZ = msg.pose.orientation.z;
 	
 }
 
 void Callback_ekf(const geometry_msgs::PoseStamped &msg)
 {
-	//linx = msg.pose.position.x;
-	//liny = -1*msg.pose.position.y;
-	//linz = -1*msg.pose.position.z;
-	//angZ = msg.pose.orientation.z;
+	linx = msg.pose.position.x;
+	liny = msg.pose.position.y;
+	linz = -1*msg.pose.position.z;
+	angZ = msg.pose.orientation.z;
 	
 }
 
 void IMUCallback(const geometry_msgs::PoseStamped::ConstPtr& imu) 
 { 
-  linz = imu->pose.position.z; 
+  //linz = imu->pose.position.z; 
 } 
 
 void VelCallback(const geometry_msgs::TwistConstPtr vel)
@@ -72,7 +72,7 @@ int main(int _argc, char **_argv)
 
     // Takeoff and go to waypoint 
 
-    double flight_level = 2;
+    double flight_level = 4;
 
 	ual.takeOff(flight_level);
 
@@ -85,6 +85,16 @@ int main(int _argc, char **_argv)
 	waypoint.pose.orientation.y = 0;
 	waypoint.pose.orientation.z = 0;
 	waypoint.pose.orientation.w = 1;
+
+	grvc::ual::Waypoint waypoint0;
+	waypoint0.header.frame_id = "map";
+	waypoint0.pose.position.x = -10;
+	waypoint0.pose.position.y = -10;
+	waypoint0.pose.position.z = 1;
+	waypoint0.pose.orientation.x = 0;
+	waypoint0.pose.orientation.y = 0;
+	waypoint0.pose.orientation.z = 0;
+	waypoint0.pose.orientation.w = 1;
 
     ual.goToWaypoint(waypoint);
     std::cout << "Arrived!" << std::endl;
@@ -109,10 +119,10 @@ int main(int _argc, char **_argv)
 
 	cv::Mat frame;
 
-	PID px(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
-	PID py(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
-	PID pz(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
-	PID gz(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
+	PID px(0.4, 0.00, 0.0, -0.5, 0.5, -20, 20);
+	PID py(0.4, 0.00, 0.0, -0.5, 0.5, -20, 20);
+	PID pz(0.4, 0.00, 0.0, -0.5, 0.5, -20, 20);
+	PID gz(0.4, 0.00, 0.0, -0.5, 0.5, -20, 20);
 
 	px.reference(0);
 	py.reference(0);
@@ -134,6 +144,14 @@ int main(int _argc, char **_argv)
 				if (reference_z == -1)
 				{
 				ual.takeOff(flight_level);
+				}
+				if (reference_z == -2)
+				{
+				ual.goToWaypoint(waypoint);
+				}
+				if (reference_z == -3)
+				{
+				ual.goToWaypoint(waypoint0);
 				}
 				if (reference_z > 0)
 				pz.reference(reference_z);
@@ -160,6 +178,7 @@ int main(int _argc, char **_argv)
 		float az = gz.update(angZ, incT);
 		
 		geometry_msgs::TwistStamped msg;
+		msg.header.stamp = ros::Time::now();
 		msg.twist.linear.x = uy;
 		msg.twist.linear.y = ux;
 		msg.twist.linear.z = uz;
