@@ -10,51 +10,46 @@
 #include <opencv2/opencv.hpp>
 #include <chrono>
 #include <math.h>
-//template <typename Type_, int D1_, int D2_>
-class PipeEKF : public rgbd::ExtendedKalmanFilter<float, 6, 6>
+template <typename Type_, int D1_, int D2_>
+class PipeEKF : public rgbd::ExtendedKalmanFilter<Type_, D1_, D2_>
 {
-public:
-  // ExtendedKalmanFilter(Eigen::Matrix<float, 3, 3> _intrinsic)
-  // {
-  //   mIntrinsic = _intrinsic;
-  // }
 
 protected:
   void updateJf(const double _incT)
   {
-    mJf.setIdentity();
+    this->mJf.setIdentity();
     //mJf.block<2, 2>(0, 2) = Eigen::Matrix<float, 2, 2>::Identity() * _incT;
   }
   void updateHZk()
   {
-    float fx = 674.3157444517138;
-    float fy = 674.3157444517138;
-    float Cx = 400.5;
-    float Cy = 300.5;
-    float x = mXfk[0];
-    float y = mXfk[1];
-    float z = mXfk[2];
-    float ax = mXfk[3];
-    float ay = mXfk[4];
-    float az = mXfk[5];
+    float fx = mIntrinsic(0, 0);
+    float fy = mIntrinsic(1, 1);
+    float Cx = mIntrinsic(0, 2);
+    float Cy = mIntrinsic(1, 2);
+    float x = this->mXfk[0];
+    float y = this->mXfk[1];
+    float z = this->mXfk[2];
+    float ax = this->mXfk[3];
+    float ay = this->mXfk[4];
+    float az = this->mXfk[5];
     float a = sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1);
     float h = (-z * cos(ax) * cos(ay) + x * (cos(ax) * cos(az) * sin(ay) + sin(ax) * sin(az)) + y * (cos(az) * sin(ax) - cos(ax) * sin(ay) * sin(az))) / a;
     float xi = (x * cos(ay) * cos(az) + z * sin(ay) - y * cos(ay) * sin(az)) * fx / (h * a) + Cx;
     float yi = (-z * cos(ay) * sin(ax) + x * (cos(az) * sin(ax) * sin(ay) - cos(ax) * sin(az)) + y * (-cos(ax) * cos(az) - sin(ax) * sin(ay) * sin(az))) * fx / (h * a) + Cy;
-    mHZk << xi, yi, h, ax, ay, az;
+    this->mHZk << xi, yi, h, ax, ay, az;
   }
   void updateJh()
   {
-    float fx = 674.3157444517138;
-    float fy = 674.3157444517138;
-    float Cx = 400.5;
-    float Cy = 300.5;
-    float x = mXfk[0];
-    float y = mXfk[1];
-    float z = mXfk[2];
-    float ax = mXfk[3];
-    float ay = mXfk[4];
-    float az = mXfk[5];
+    float fx = mIntrinsic(0, 0);
+    float fy = mIntrinsic(1, 1);
+    float Cx = mIntrinsic(0, 2);
+    float Cy = mIntrinsic(1, 2);
+    float x = this->mXfk[0];
+    float y = this->mXfk[1];
+    float z = this->mXfk[2];
+    float ax = this->mXfk[3];
+    float ay = this->mXfk[4];
+    float az = this->mXfk[5];
     float landa = sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1);
     float altitude = (-z * cos(ax) * cos(ay) + x * (cos(ax) * cos(az) * sin(ay) + sin(ax) * sin(az)) + y * (cos(az) * sin(ax) - cos(ax) * sin(ay) * sin(az))) / landa;
     float a = fx * cos(ay) * cos(az) / (landa * altitude);
@@ -67,12 +62,18 @@ protected:
     float h = (cos(az) * sin(ax) - cos(ax) * sin(ay) * sin(az)) / landa;
     float i = -(cos(ax) * cos(ay)) / landa;
 
-    mJh << a, b, c, 0, 0, 0,
+    this->mJh << a, b, c, 0, 0, 0,
         d, e, f, 0, 0, 0,
         g, h, i, 0, 0, 0,
         0, 0, 0, 1, 0, 0,
         0, 0, 0, 0, 1, 0,
         0, 0, 0, 0, 0, 1;
+  }
+
+public:
+  void setIntrinsic(Eigen::Matrix<float, 3, 3> _intrinsic)
+  {
+    mIntrinsic = _intrinsic;
   }
 
 public:
@@ -107,7 +108,7 @@ public:
   ros::Publisher no_Filtered_pub;
   ros::Subscriber pipe_subscriber;
   Eigen::Matrix<float, 3, 3> mIntrinsic;
-  PipeEKF ekf;
+  PipeEKF<Type_, D1_, D2_> ekf;
   bool mKalmanFilter = true;
   bool mKalmanInitialized = false;
   Observation mLastObservation;

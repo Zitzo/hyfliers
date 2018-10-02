@@ -103,7 +103,7 @@ void StateFilter<Type_,D1_,D2_>::initializeKalmanFilter()
 
     Eigen::Matrix<float, 6, 1> x0;
     x0 << Xc, Yc, Zc, ax, ay, az;
-
+    ekf.setIntrinsic(mIntrinsic);
     ekf.setUpEKF(mQ, mR, x0);
     mKalmanInitialized = true;
 }
