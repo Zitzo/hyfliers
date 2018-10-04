@@ -207,10 +207,18 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_executable(state_filter src/main.cpp src/StateFilter.h src/StateFilter.inl)
+add_executable(ekf_filter src/ekf_filter.cpp src/StateFilter.h src/StateFilter.inl)
 
-target_include_directories(state_filter PUBLIC ${catkin_INCLUDE_DIRS})
-target_include_directories(state_filter PUBLIC ${OpenCV_INCLUDE_DIRS})
+target_include_directories(ekf_filter PUBLIC ${catkin_INCLUDE_DIRS})
+target_include_directories(ekf_filter PUBLIC ${OpenCV_INCLUDE_DIRS})
 
-target_link_libraries(state_filter ${catkin_LIBRARIES} rgbd_tools)
-target_link_libraries(state_filter ${OpenCV_LIBRARIES} )
+target_link_libraries(ekf_filter ${catkin_LIBRARIES} rgbd_tools)
+target_link_libraries(ekf_filter ${OpenCV_LIBRARIES} )
+
+add_executable(particle_filter src/particle_filter.cpp src/ParticleFilter.h src/ParticleFilter.inl)
+
+target_include_directories(particle_filter PUBLIC ${catkin_INCLUDE_DIRS})
+target_include_directories(particle_filter PUBLIC ${OpenCV_INCLUDE_DIRS})
+
+target_link_libraries(particle_filter ${catkin_LIBRARIES} rgbd_tools)
+target_link_libraries(particle_filter ${OpenCV_LIBRARIES} )
