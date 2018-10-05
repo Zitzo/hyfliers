@@ -15,14 +15,15 @@
 class ParticleDrone : public rgbd::Particle
 {
   public:
-    ParticleDrone(){
+    ParticleDrone()
+    {
         //setNoise(0.1, 0.1, 10.0);
         // set(	((double)rand()/RAND_MAX)*WORLD_SIZE,
         // 		((double)rand()/RAND_MAX)*WORLD_SIZE,
         // 		((double)rand()/RAND_MAX)*2*M_PI);
         mIntrinsic << 674.3157444517138, 0, 400.5,
-        0, 674.3157444517138, 300.5,
-        0, 0, 1;
+            0, 674.3157444517138, 300.5,
+            0, 0, 1;
     };
     void simulate(){
         //move(0.1, 0.5);
@@ -32,48 +33,51 @@ class ParticleDrone : public rgbd::Particle
     };
 
   private:
+    /// Obtain world position from camera observation
     Eigen::Vector4f observationToState(float xi_, float yi_, float h_, Eigen::Quaternionf q_)
     {
+        // Obtain roll, pitch and yaw
         Eigen::Matrix3f Rot = q_.normalized().toRotationMatrix();
         double ax = atan2(Rot(2, 1), Rot(2, 2));
         double ay = atan2(-Rot(2, 0), sqrt(Rot(2, 1) * Rot(2, 1) + Rot(2, 2) * Rot(2, 2)));
         double az = atan2(Rot(1, 0), Rot(0, 0));
 
-        float Zc = h_ * sqrt(tan(ax)*tan(ax)+tan(ay)*tan(ay)+1);
+        // Obtain camera position from observation
+        float Zc = h_ * sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1);
         float Xc = ((xi_ - mIntrinsic(0, 2)) / mIntrinsic(0, 0)) * Zc;
         float Yc = ((yi_ - mIntrinsic(1, 2)) / mIntrinsic(1, 1)) * Zc;
         Eigen::Vector4f cameraPosition;
         cameraPosition << Xc, Yc, Zc, 1;
-        
 
         // Transformation world-drone
-        Eigen::Affine3f rot = create_rotation_matrix(ax,ay,az);
-        Eigen::Matrix4f Tworld_drone=rot.matrix();
+        Eigen::Affine3f rot = create_rotation_matrix(ax, ay, az);
+        Eigen::Matrix4f Tworld_drone = rot.matrix();
 
         // Transformation drone-camera
-         Eigen::Matrix4f Tdrone_camera;
-         Eigen::Matrix3f R;
-         R << 1, 0, 0,
-             0, 1, 0,
-             0, 0, -1;
-         Eigen::Vector3f T;
-         T << 0, 0, 0;
-         Tdrone_camera.setIdentity();
-         Tdrone_camera.block<3,3>(0,0) = R;
-         Tdrone_camera.block<3,1>(2,2) = T;
+        Eigen::Matrix4f Tdrone_camera;
+        Eigen::Matrix3f R;
+        R << 1, 0, 0,
+            0, 1, 0,
+            0, 0, -1;
+        Eigen::Vector3f T;
+        T << 0, 0, 0;
+        Tdrone_camera.setIdentity();
+        Tdrone_camera.block<3, 3>(0, 0) = R;
+        Tdrone_camera.block<3, 1>(2, 2) = T;
 
-        //return Tworld_drone*Tdrone_camera*cameraPosition;
+        return Tworld_drone * Tdrone_camera * cameraPosition;
     };
-
+    /// Obtain observation from world position
     Eigen::Vector4f stateToObservation(){
 
     };
 
+    // Get rotation matrix from roll, pitch and yaw
     Eigen::Affine3f create_rotation_matrix(float ax, float ay, float az)
     {
-        Eigen::Affine3f rx =Eigen::Affine3f(Eigen::AngleAxisf(ax, Eigen::Vector3f(1, 0, 0)));
-        Eigen::Affine3f ry =Eigen::Affine3f(Eigen::AngleAxisf(ay, Eigen::Vector3f(0, 1, 0)));
-        Eigen::Affine3f rz =Eigen::Affine3f(Eigen::AngleAxisf(az, Eigen::Vector3f(0, 0, 1)));
+        Eigen::Affine3f rx = Eigen::Affine3f(Eigen::AngleAxisf(ax, Eigen::Vector3f(1, 0, 0)));
+        Eigen::Affine3f ry = Eigen::Affine3f(Eigen::AngleAxisf(ay, Eigen::Vector3f(0, 1, 0)));
+        Eigen::Affine3f rz = Eigen::Affine3f(Eigen::AngleAxisf(az, Eigen::Vector3f(0, 0, 1)));
         return rz * ry * rx;
     }
 
