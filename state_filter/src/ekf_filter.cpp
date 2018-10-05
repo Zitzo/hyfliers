@@ -6,7 +6,7 @@
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "State_Filter");
+    ros::init(argc, argv, "EKF_Filter");
     ros::NodeHandle n("~");
     StateFilter<float,6,6> sf(n);
     ros::spin();

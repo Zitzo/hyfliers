@@ -10,6 +10,7 @@
 #include <opencv2/opencv.hpp>
 #include <chrono>
 #include <math.h>
+
 template <typename Type_, int D1_, int D2_>
 class PipeEKF : public rgbd::ExtendedKalmanFilter<Type_, D1_, D2_>
 {

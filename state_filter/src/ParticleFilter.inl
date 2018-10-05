@@ -17,15 +17,21 @@ ParticleFilter<ParticleType_>::ParticleFilter(ros::NodeHandle &n, unsigned _numP
 template<typename ParticleType_>
 void ParticleFilter<ParticleType_>::pipeDetectionCallback(const geometry_msgs::PoseStamped msg)
 {
-
+    mLastObservation.xi = msg.pose.position.x;
+    mLastObservation.yi = msg.pose.position.y;
+    mLastObservation.altitude = msg.pose.position.z;
+    mLastObservation.time = std::chrono::steady_clock::now();
+    mLastObservation.quat = Eigen::Quaternionf(msg.pose.orientation.w, msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z);
+    
     if (!mParticleInitialized)
     {
         initializeParticleFilter();
     }
     else
     {
-        //filter.step(robot);
+        computeParticleFilter();
     }
+    t0 = std::chrono::steady_clock::now();
 }
 
 /*------------------------------------------------------------------------------------------------------------------------*/
@@ -38,6 +44,5 @@ bool ParticleFilter<ParticleType_>::computeParticleFilter()
 template<typename ParticleType_>
 void ParticleFilter<ParticleType_>::initializeParticleFilter()
 {
-    // filter(1000);
-    // filter.init();
+    filter.init();
 }

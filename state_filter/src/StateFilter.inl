@@ -26,15 +26,14 @@ void StateFilter<Type_,D1_,D2_>::pipeDetectionCallback(const geometry_msgs::Pose
     if (!mKalmanInitialized)
     {
         initializeKalmanFilter();
-        t0 = std::chrono::steady_clock::now();
     }
     else
     {
         float incT = std::chrono::duration_cast<std::chrono::milliseconds>(mLastObservation.time - t0).count() / 1000.0f;
         // Adding new observation
         computeKalmanFilter(incT);
-        t0 = std::chrono::steady_clock::now();
     }
+    t0 = std::chrono::steady_clock::now();
 }
 
 /*------------------------------------------------------------------------------------------------------------------------*/
