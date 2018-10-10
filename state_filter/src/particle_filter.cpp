@@ -4,11 +4,13 @@
 #include "ParticleFilter.h"
 #include <iostream>
 
+struct Observation;
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "Particle_Filter");
     ros::NodeHandle n("~");
-    ParticleFilter<ParticleDrone> pf(n,100);
+    ParticleFilter<ParticleDrone,Observation> pf(n,100);
     ros::spin();
     return 0;
 }

@@ -1,5 +1,5 @@
-template<typename ParticleType_>
-ParticleFilter<ParticleType_>::ParticleFilter(ros::NodeHandle &n, unsigned _numParticles) : nh_(n), filter(_numParticles)
+template <typename ParticleType_, typename ObservationData_>
+ParticleFilter<ParticleType_, ObservationData_>::ParticleFilter(ros::NodeHandle &n, unsigned _numParticles) : nh_(n), filter(_numParticles)
 {
     pipe_subscriber = n.subscribe("/ekf/pipe_pose", 10, &ParticleFilter::pipeDetectionCallback, this);
     filtered_pub = n.advertise<geometry_msgs::PoseStamped>("/particle_pose", 1);
@@ -14,15 +14,15 @@ ParticleFilter<ParticleType_>::ParticleFilter(ros::NodeHandle &n, unsigned _numP
 }
 
 /*------------------------------------------------------------------------------------------------------------------------*/
-template<typename ParticleType_>
-void ParticleFilter<ParticleType_>::pipeDetectionCallback(const geometry_msgs::PoseStamped msg)
+template <typename ParticleType_, typename ObservationData_>
+void ParticleFilter<ParticleType_, ObservationData_>::pipeDetectionCallback(const geometry_msgs::PoseStamped msg)
 {
     mLastObservation.xi = msg.pose.position.x;
     mLastObservation.yi = msg.pose.position.y;
     mLastObservation.altitude = msg.pose.position.z;
     mLastObservation.time = std::chrono::steady_clock::now();
     mLastObservation.quat = Eigen::Quaternionf(msg.pose.orientation.w, msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z);
-    
+
     if (!mParticleInitialized)
     {
         initializeParticleFilter();
@@ -35,14 +35,14 @@ void ParticleFilter<ParticleType_>::pipeDetectionCallback(const geometry_msgs::P
 }
 
 /*------------------------------------------------------------------------------------------------------------------------*/
-template<typename ParticleType_>
-bool ParticleFilter<ParticleType_>::computeParticleFilter()
+template <typename ParticleType_, typename ObservationData_>
+bool ParticleFilter<ParticleType_, ObservationData_>::computeParticleFilter()
 {
 }
 
 /*------------------------------------------------------------------------------------------------------------------------*/
-template<typename ParticleType_>
-void ParticleFilter<ParticleType_>::initializeParticleFilter()
+template <typename ParticleType_, typename ObservationData_>
+void ParticleFilter<ParticleType_, ObservationData_>::initializeParticleFilter()
 {
     filter.init();
 }

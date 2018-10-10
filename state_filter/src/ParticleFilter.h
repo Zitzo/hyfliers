@@ -21,7 +21,7 @@ struct Observation
     std::chrono::steady_clock::time_point time;
 };
 
-class ParticleDrone : public rgbd::Particle
+class ParticleDrone : public rgbd::ParticleInterface<Observation>
 {
   public:
     ParticleDrone()
@@ -37,7 +37,7 @@ class ParticleDrone : public rgbd::Particle
     void simulate(){
         //move(0.1, 0.5);
     };
-    void calcWeigh(Particle &_realParticle){
+    double computeWeight(Observation &_Particle){
         //mWeigh = measurementProb(static_cast<ParticleRobot &>(_realParticle).sense());
     };
 
@@ -135,7 +135,7 @@ class ParticleDrone : public rgbd::Particle
         rx = Eigen::AngleAxisf(ax_ * M_PI, Eigen::Vector3f::UnitX());
         ry = Eigen::AngleAxisf(ay_ * M_PI, Eigen::Vector3f::UnitY());
         rz = Eigen::AngleAxisf(az_ * M_PI, Eigen::Vector3f::UnitZ());
-        
+
         Eigen::Matrix4f rotMatrix;
         rotMatrix.setIdentity();
         if (inverse)
@@ -157,7 +157,7 @@ class ParticleDrone : public rgbd::Particle
     Eigen::Matrix<float, 3, 3> mIntrinsic;
 };
 
-template <typename ParticleType_>
+template <typename ParticleType_,typename ObservationData_>
 class ParticleFilter
 {
   public:
@@ -175,7 +175,7 @@ class ParticleFilter
     ros::Publisher filtered_pub;
     ros::Publisher no_Filtered_pub;
     ros::Subscriber pipe_subscriber;
-    rgbd::ParticleFilterCPU<ParticleType_> filter;
+    rgbd::ParticleFilterCPU<ParticleType_,ObservationData_> filter;
     Eigen::Matrix<float, 3, 3> mIntrinsic;
     bool mParticleInitialized = false;
     Observation mLastObservation;
