@@ -57,7 +57,23 @@ class ParticleDrone : public rgbd::ParticleInterface<Observation>
     {
         stateToObservation();
 
-        //mWeigh = measurementProb(static_cast<ParticleRobot &>(_realParticle).sense());
+        double weightDistance = sqrt((_Particle.xi-mObservation.xi)*(_Particle.xi-mObservation.xi)+(_Particle.yi-mObservation.yi)*(_Particle.yi-mObservation.yi));
+        
+        Eigen::Matrix3f Rot = _Particle.quat.normalized().toRotationMatrix();
+        double drone_ax = atan2(Rot(2, 1), Rot(2, 2));
+        double drone_ay = atan2(-Rot(2, 0), sqrt(Rot(2, 1) * Rot(2, 1) + Rot(2, 2) * Rot(2, 2)));
+        double drone_az = atan2(Rot(1, 0), Rot(0, 0));
+        double particle_ax = atan2(mOrientation(2, 1), mOrientation(2, 2));
+        double particle_ay = atan2(-mOrientation(2, 0), sqrt(mOrientation(2, 1) * mOrientation(2, 1) + mOrientation(2, 2) * mOrientation(2, 2)));
+        double particle_az = atan2(mOrientation(1, 0), mOrientation(0, 0));
+
+        double ax_diff = (drone_ax- particle_ax)*(drone_ax- particle_ax);
+        double ay_diff = (drone_ay- particle_ay)*(drone_ay- particle_ay);
+        double az_diff = (drone_az- particle_az)*(drone_az- particle_az);
+
+        double weightOrientation = sqrt(ax_diff+ay_diff+az_diff);
+
+        return weightDistance*weightOrientation;
     };
 
     // Init particles near a pose
