@@ -31,7 +31,17 @@ void ParticleFilter<ParticleType_, ObservationData_>::pipeDetectionCallback(cons
 template <typename ParticleType_, typename ObservationData_>
 bool ParticleFilter<ParticleType_, ObservationData_>::computeParticleFilter()
 {
+    cv::Mat display(640, 480, CV_8UC3, cv::Scalar(0,0,0));
     filter.step(mLastObservation);
+    
+    // Draw drone
+    cv::circle(display, cv::Point2i(mLastObservation.xi, mLastObservation.yi), 3, cv::Scalar(255,0,0), 3);
+    // Draw particles
+    std::vector<ParticleDrone> particles = filter.particles();
+    for(auto& particle: particles){
+        cv::circle(display, cv::Point2i(particle.mObservation.xi, particle.mObservation.yi), 0.5, cv::Scalar(0,0,255), 3);
+    }    
+
 }
 
 /*------------------------------------------------------------------------------------------------------------------------*/
@@ -42,4 +52,13 @@ void ParticleFilter<ParticleType_, ObservationData_>::initializeParticleFilter()
     drone.observationToState(mLastObservation);
     filter.init();
 
+    // Initialize particle poses.
+    Eigen::Matrix4f dronePose = drone.getPose();
+    std::vector<ParticleDrone> particles = filter.particles();
+
+    for(auto& particle: particles){
+        particle.initParticle(dronePose);
+    }
+
+    cv::namedWindow("display", CV_WINDOW_FREERATIO);
 }

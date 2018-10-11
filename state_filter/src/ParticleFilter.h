@@ -26,26 +26,77 @@ class ParticleDrone : public rgbd::ParticleInterface<Observation>
   public:
     ParticleDrone()
     {
-        //setNoise(0.1, 0.1, 10.0);
-        // set(	((double)rand()/RAND_MAX)*WORLD_SIZE,
-        // 		((double)rand()/RAND_MAX)*WORLD_SIZE,
-        // 		((double)rand()/RAND_MAX)*2*M_PI);
         mIntrinsic << 674.3157444517138, 0, 400.5,
             0, 674.3157444517138, 300.5,
             0, 0, 1;
     };
-    void simulate(){
-        //move(0.1, 0.5);
+
+    void simulate()
+    {
+
+        Eigen::Vector3f rot;
+        rot << atan2(mOrientation(2, 1), mOrientation(2, 2)),
+            atan2(-mOrientation(2, 0), sqrt(mOrientation(2, 1) * mOrientation(2, 1) + mOrientation(2, 2) * mOrientation(2, 2))),
+            atan2(mOrientation(1, 0), mOrientation(0, 0));
+
+        // Create translation noise
+        Eigen::Vector3f transNoise;
+        transNoise << gauss(0, 0.05), gauss(0, 0.05), gauss(0, 0.01);
+        // Create rotation noise
+        Eigen::Vector3f rotNoise;
+        rotNoise << gauss(0, M_PI / 4), gauss(0, M_PI / 4), gauss(0, M_PI / 4);
+
+        // Move particle
+        mPosition += transNoise;
+        rot += rotNoise;
+
+        mOrientation = Eigen::AngleAxisf(rot(2), Eigen::Vector3f::UnitZ()) * Eigen::AngleAxisf(rot(1), Eigen::Vector3f::UnitY()) * Eigen::AngleAxisf(rot(0), Eigen::Vector3f::UnitX());
     };
-    double computeWeight(Observation &_Particle){
+
+    double computeWeight(Observation &_Particle)
+    {
+        stateToObservation();
+
         //mWeigh = measurementProb(static_cast<ParticleRobot &>(_realParticle).sense());
     };
+
+    // Init particles near a pose
+    void initParticle(Eigen::Matrix4f initPose_)
+    {
+
+        Eigen::Vector3f trans = initPose_.block<3, 1>(2, 2);
+        Eigen::Matrix3f rot = initPose_.block<3, 3>(0, 0);
+
+        Eigen::Vector3f ea = rot.eulerAngles(0, 1, 2);
+
+        // Create translation noise
+        Eigen::Vector3f transNoise;
+        transNoise << gauss(0, 1), gauss(0, 1), gauss(0, 0.5);
+
+        // Create rotation noise
+        Eigen::Vector3f rotNoise;
+        rotNoise << gauss(0, M_PI / 2), gauss(0, M_PI / 2), gauss(0, M_PI / 2);
+
+        mPosition = trans + transNoise;
+        ea += rotNoise;
+
+        mOrientation = Eigen::AngleAxisf(ea(2), Eigen::Vector3f::UnitZ()) * Eigen::AngleAxisf(ea(1), Eigen::Vector3f::UnitY()) * Eigen::AngleAxisf(ea(0), Eigen::Vector3f::UnitX());
+    }
+
+    double gauss(const double &_nu, const double &_sigma)
+    {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+
+        std::normal_distribution<> d(_nu, _sigma);
+
+        return d(gen);
+    }
 
   public:
     /// Obtain world position from camera observation
     void observationToState(Observation obs)
     {
-
         // Obtain roll, pitch and yaw
         Eigen::Matrix3f Rot = obs.quat.normalized().toRotationMatrix();
         double ax = atan2(Rot(2, 1), Rot(2, 2));
@@ -134,9 +185,9 @@ class ParticleDrone : public rgbd::ParticleInterface<Observation>
     Eigen::Matrix4f create_rotation_matrix(const float ax_, const float ay_, const float az_, bool inverse)
     {
         Eigen::Matrix3f rx, ry, rz;
-        rx = Eigen::AngleAxisf(ax_ * M_PI, Eigen::Vector3f::UnitX());
-        ry = Eigen::AngleAxisf(ay_ * M_PI, Eigen::Vector3f::UnitY());
-        rz = Eigen::AngleAxisf(az_ * M_PI, Eigen::Vector3f::UnitZ());
+        rx = Eigen::AngleAxisf(ax_, Eigen::Vector3f::UnitX());
+        ry = Eigen::AngleAxisf(ay_, Eigen::Vector3f::UnitY());
+        rz = Eigen::AngleAxisf(az_, Eigen::Vector3f::UnitZ());
 
         Eigen::Matrix4f rotMatrix;
         rotMatrix.setIdentity();
@@ -154,12 +205,20 @@ class ParticleDrone : public rgbd::ParticleInterface<Observation>
     }
 
   public:
-    Eigen::Matrix4f mInitialPose;
+    Eigen::Matrix4f getPose()
+    {
+        Eigen::Matrix4f pose;
+        pose.block<3, 3>(0, 0) = mOrientation;
+        pose.block<3, 1>(2, 2) = mPosition;
+        return pose;
+    }
+
+  public:
+    Observation mObservation;
 
   private:
     Eigen::Vector3f mPosition;
     Eigen::Matrix3f mOrientation;
-    Observation mObservation;
     Eigen::Matrix<float, 3, 3> mIntrinsic;
 };
 
