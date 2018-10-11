@@ -57,7 +57,8 @@ class ParticleDrone : public rgbd::ParticleInterface<Observation>
     {
         stateToObservation();
 
-        double weightDistance = sqrt((_Particle.xi-mObservation.xi)*(_Particle.xi-mObservation.xi)+(_Particle.yi-mObservation.yi)*(_Particle.yi-mObservation.yi));
+        // Distance weight between 1 and 0
+        double weightDistance =1- sqrt((_Particle.xi-mObservation.xi)*(_Particle.xi-mObservation.xi)+(_Particle.yi-mObservation.yi)*(_Particle.yi-mObservation.yi))/(sqrt(640*640+480*480));
         
         Eigen::Matrix3f Rot = _Particle.quat.normalized().toRotationMatrix();
         double drone_ax = atan2(Rot(2, 1), Rot(2, 2));
@@ -71,7 +72,8 @@ class ParticleDrone : public rgbd::ParticleInterface<Observation>
         double ay_diff = (drone_ay- particle_ay)*(drone_ay- particle_ay);
         double az_diff = (drone_az- particle_az)*(drone_az- particle_az);
 
-        double weightOrientation = sqrt(ax_diff+ay_diff+az_diff);
+        //  Orientation weight between 1 and 0
+        double weightOrientation =1- sqrt(ax_diff+ay_diff+az_diff)/(2*M_PI);
 
         return weightDistance*weightOrientation;
     };
