@@ -4,13 +4,6 @@ ParticleFilter<ParticleType_, ObservationData_>::ParticleFilter(ros::NodeHandle 
     pipe_subscriber = n.subscribe("/ekf/pipe_pose", 10, &ParticleFilter::pipeDetectionCallback, this);
     filtered_pub = n.advertise<geometry_msgs::PoseStamped>("/particle_pose", 1);
     no_Filtered_pub = n.advertise<geometry_msgs::PoseStamped>("/ekf_pose_nFilter", 1);
-    float fx = 674.3157444517138;
-    float fy = 674.3157444517138;
-    float Cx = 400.5;
-    float Cy = 300.5;
-    mIntrinsic << fx, 0, Cx,
-        0, fy, Cy,
-        0, 0, 1;
 }
 
 /*------------------------------------------------------------------------------------------------------------------------*/
@@ -38,11 +31,15 @@ void ParticleFilter<ParticleType_, ObservationData_>::pipeDetectionCallback(cons
 template <typename ParticleType_, typename ObservationData_>
 bool ParticleFilter<ParticleType_, ObservationData_>::computeParticleFilter()
 {
+    filter.step(mLastObservation);
 }
 
 /*------------------------------------------------------------------------------------------------------------------------*/
 template <typename ParticleType_, typename ObservationData_>
 void ParticleFilter<ParticleType_, ObservationData_>::initializeParticleFilter()
 {
+    ROS_INFO("Initializating particle filter");
+    drone.observationToState(mLastObservation);
     filter.init();
+
 }

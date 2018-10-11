@@ -41,20 +41,21 @@ class ParticleDrone : public rgbd::ParticleInterface<Observation>
         //mWeigh = measurementProb(static_cast<ParticleRobot &>(_realParticle).sense());
     };
 
-  private:
+  public:
     /// Obtain world position from camera observation
-    Eigen::Vector3f observationToState(float xi_, float yi_, float h_, Eigen::Quaternionf q_)
+    void observationToState(Observation obs)
     {
+
         // Obtain roll, pitch and yaw
-        Eigen::Matrix3f Rot = q_.normalized().toRotationMatrix();
+        Eigen::Matrix3f Rot = obs.quat.normalized().toRotationMatrix();
         double ax = atan2(Rot(2, 1), Rot(2, 2));
         double ay = atan2(-Rot(2, 0), sqrt(Rot(2, 1) * Rot(2, 1) + Rot(2, 2) * Rot(2, 2)));
         double az = atan2(Rot(1, 0), Rot(0, 0));
 
         // Obtain camera position from observation
-        float Zc = h_ * sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1);
-        float Xc = ((xi_ - mIntrinsic(0, 2)) / mIntrinsic(0, 0)) * Zc;
-        float Yc = ((yi_ - mIntrinsic(1, 2)) / mIntrinsic(1, 1)) * Zc;
+        float Zc = obs.altitude * sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1);
+        float Xc = ((obs.xi - mIntrinsic(0, 2)) / mIntrinsic(0, 0)) * Zc;
+        float Yc = ((obs.yi - mIntrinsic(1, 2)) / mIntrinsic(1, 1)) * Zc;
         Eigen::Vector4f cameraPosition;
         cameraPosition << Xc, Yc, Zc, 1;
 
@@ -77,11 +78,11 @@ class ParticleDrone : public rgbd::ParticleInterface<Observation>
         Eigen::Vector4f world_position = Tworld_camera * cameraPosition;
         mOrientation = Tworld_camera.block<3, 3>(0, 0);
         mPosition = world_position.block<3, 1>(0, 0);
-        return world_position.block<3, 1>(0, 0);
     };
 
+  private:
     /// Obtain observation from world position
-    Observation stateToObservation()
+    void stateToObservation()
     {
         // Get orientation
         Eigen::Vector3f ea = mOrientation.eulerAngles(0, 1, 2);
@@ -90,15 +91,16 @@ class ParticleDrone : public rgbd::ParticleInterface<Observation>
         float az = ea(2);
 
         // Transformation camera-drone
-        Eigen::Matrix3f R;
+
+        Eigen::Matrix4f Trot;
+        Trot.setIdentity();
+        Eigen::Matrix3f R; // Change: Rotation camera-IMU
         R << 1, 0, 0,
             0, 1, 0,
             0, 0, -1;
-        Eigen::Matrix4f Trot;
-        Trot.setIdentity();
         Trot.block<3, 3>(0, 0) = R;
         Eigen::Vector3f T;
-        T << 0, 0, 0; // Translation camera-IMU
+        T << 0, 0, 0; // Change:  Translation camera-IMU
         Eigen::Matrix4f Ttrans;
         Ttrans.setIdentity();
         Ttrans.block<3, 1>(2, 2) = T;
@@ -125,13 +127,13 @@ class ParticleDrone : public rgbd::ParticleInterface<Observation>
         z.xi = mIntrinsic(0, 0) * Xc / Zc + mIntrinsic(0, 2);
         z.yi = mIntrinsic(1, 1) * Xc / Zc + mIntrinsic(1, 2);
         z.altitude = Zc / (sqrt(tan(ax) * tan(ax) + tan(ay) * tan(ay) + 1));
-        return z;
+        mObservation = z;
     };
 
     // Get rotation matrix from roll, pitch and yaw
-    Eigen::Matrix4f create_rotation_matrix(const float ax_,const float ay_,const float az_, bool inverse)
+    Eigen::Matrix4f create_rotation_matrix(const float ax_, const float ay_, const float az_, bool inverse)
     {
-        Eigen::Matrix3f rx,ry,rz;
+        Eigen::Matrix3f rx, ry, rz;
         rx = Eigen::AngleAxisf(ax_ * M_PI, Eigen::Vector3f::UnitX());
         ry = Eigen::AngleAxisf(ay_ * M_PI, Eigen::Vector3f::UnitY());
         rz = Eigen::AngleAxisf(az_ * M_PI, Eigen::Vector3f::UnitZ());
@@ -151,13 +153,17 @@ class ParticleDrone : public rgbd::ParticleInterface<Observation>
         return rotMatrix;
     }
 
+  public:
+    Eigen::Matrix4f mInitialPose;
+
   private:
     Eigen::Vector3f mPosition;
     Eigen::Matrix3f mOrientation;
+    Observation mObservation;
     Eigen::Matrix<float, 3, 3> mIntrinsic;
 };
 
-template <typename ParticleType_,typename ObservationData_>
+template <typename ParticleType_, typename ObservationData_>
 class ParticleFilter
 {
   public:
@@ -175,11 +181,12 @@ class ParticleFilter
     ros::Publisher filtered_pub;
     ros::Publisher no_Filtered_pub;
     ros::Subscriber pipe_subscriber;
-    rgbd::ParticleFilterCPU<ParticleType_,ObservationData_> filter;
-    Eigen::Matrix<float, 3, 3> mIntrinsic;
-    bool mParticleInitialized = false;
+    rgbd::ParticleFilterCPU<ParticleType_, ObservationData_> filter;
+
     Observation mLastObservation;
     std::chrono::steady_clock::time_point t0;
+    bool mParticleInitialized = false;
+    ParticleDrone drone;
 };
 
 #include "ParticleFilter.inl"
