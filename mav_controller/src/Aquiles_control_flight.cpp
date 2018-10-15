@@ -22,7 +22,6 @@
 #include "std_msgs/Float64.h"
 #include <uav_abstraction_layer/ual.h>
 
-
 using namespace cv;
 using namespace pcl;
 using namespace std;
@@ -61,83 +60,6 @@ geometry_msgs::TwistStamped command_vel(float _ux, float _uy, float _uz, float _
 
 int main(int _argc, char **_argv)
 {
-	float zChange;
-	std::cout << "Enter altitude: ";
-	std::cin >> zChange;
-	std::cout << std::endl;
-	unsigned int state;
-
-	std::thread keyboard([&]() {
-		unsigned int input;
-		bool run = true;
-		while (run)
-		{
-			auto t0 = chrono::steady_clock::now();
-			std::cout << "1,2,3,4=move || 9=takeoff || 8=control || 7=fakefly || 0=land" << std::endl;
-			std::cin >> input;
-			stateMutex.lock();
-			state = input;
-			stateMutex.unlock();
-			auto t1 = chrono::steady_clock::now();
-			float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() / 1000.0f;
-			if (incT > 0.6)
-			{
-				std::cout << "Time: " << incT << std::endl;
-				switch (input)
-				{
-				case 0:
-					std::cout << "Land" << std::endl;
-					run = false;
-					break;
-				case 1:
-					std::cout << "Forward" << std::endl;
-					break;
-				case 2:
-					std::cout << "Backward" << std::endl;
-					break;
-				case 3:
-					std::cout << "Left" << std::endl;
-					break;
-				case 4:
-					std::cout << "Right" << std::endl;
-					break;
-				case 5:
-					std::cout << " Yaw right" << std::endl;
-					break;
-				case 6:
-					std::cout << "Yaw left" << std::endl;
-					break;
-
-				case 7:
-					std::cout << "Fakefly mode" << std::endl;
-					break;
-				case 8:
-					std::cout << "Control mode" << std::endl;
-					break;
-				case 9:
-					std::cout << "Takeoff" << std::endl;
-					break;
-				case 10:
-					std::cout << std::fixed << " Battery percent: " << batteryPercent << std::endl;
-					std::cout << std::fixed << " ARDrone state: " << droneState << std::endl;
-					break;
-				case 30:
-					float i;
-					std::cout << "Enter altitude: ";
-					std::cin >> i;
-					if (i > 0 && i < 4)
-					{
-						std::cout << "Changing altitude reference to " << i << std::endl;
-						zChange = i;
-					}
-					break;
-				default:
-					std::cout << "Hovering" << std::endl;
-				}
-			}
-		}
-		std::cout << std::fixed << "Closing keyboard thread" << std::endl;
-	});
 	ros::init(_argc, _argv, "MAV_Controller");
 	ros::NodeHandle nh;
 	ros::NodeHandle controller_node;
@@ -149,18 +71,18 @@ int main(int _argc, char **_argv)
 	ros::Publisher ref_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 5);
 
 	std_msgs::Empty emp_msg;
+	geometry_msgs::TwistStamped constant_cmd_vel;
 
 	ros::AsyncSpinner spinner(4);
 	spinner.start();
 
 	// INIT UAL
 	grvc::ual::UAL ual(_argc, _argv);
-	while (!ual.isReady() && ros::ok()) {
+	while (!ual.isReady() && ros::ok())
+	{
 		std::cout << "UAL not ready!" << std::endl;
 		sleep(1);
 	}
-
-	geometry_msgs::TwistStamped constant_cmd_vel;
 
 	PID px(0.3, 0.0, 0.0, -0.5, 0.5, -20, 20);
 	PID py(0.3, 0.0, 0.0, -0.5, 0.5, -20, 20);
@@ -169,25 +91,40 @@ int main(int _argc, char **_argv)
 
 	px.reference(0);
 	py.reference(0);
+	pz.reference(3); // 3 meters altitude control
 	gz.reference(0);
 
 	px.enableRosInterface("/mav_controller/pid_x");
 	py.enableRosInterface("/mav_controller/pid_y");
 	pz.enableRosInterface("/mav_controller/pid_z");
 
-	if (zChange != 0)
-	{
-		pz.reference(zChange);
-	}
-	state = -1; // Start in hovering
 	auto t0 = chrono::steady_clock::now();
-	double keytime = 0.5; //Fixed command time
-	float v = 0.5;		  // Fixed velocity
-	bool fly = false;
-	bool run = true;
+	float v = 0.5; // Fixed velocity
+	unsigned state = 1;
 	while (ros::ok() && run)
 	{
-		if (state == 8) // Control mode
+		if (state == 1)
+		{ // Takeoff
+			double flight_level = 2;
+			ual.takeOff(flight_level);
+			state = 2;
+		}
+		else if (state == 2) // goToWaypoint
+		{
+			grvc::ual::Waypoint waypoint;
+			waypoint.header.frame_id = "map";
+			waypoint.pose.position.x = 2;
+			waypoint.pose.position.y = 0;
+			waypoint.pose.position.z = 3;
+			waypoint.pose.orientation.x = 0;
+			waypoint.pose.orientation.y = 0;
+			waypoint.pose.orientation.z = 0;
+			waypoint.pose.orientation.w = 1;
+			ual.goToWaypoint(waypoint);
+			std::cout << "Arrived!" << std::endl;
+			state = 3;
+		}
+		else if (state == 3) // Control mode
 		{
 			auto t1 = chrono::steady_clock::now();
 			auto rosTime = ros::Time::now();
@@ -218,119 +155,20 @@ int main(int _argc, char **_argv)
 			vel_pub.publish(msg);
 			pose_pub.publish(msgpos);
 			ref_pub.publish(msgref);
-            
-            ual.setVelocity(msg);
-		}
-		else if (state == 9) // Takeoff
-		{
-		
-			double flight_level = 2;
-			ual.takeOff(flight_level);
-			stateMutex.lock();
-			state = 10; //To hovering mode
-			stateMutex.unlock();
-			fly = true;
+
+			ual.setVelocity(msg);
 		}
 		else if (state == 0) // Land
 		{
 			ual.land();
-			keyboard.join();
 			std::cout << "Closing mav_controller" << std::endl;
 			run = false;
 			exit(0);
 		}
-		else if (state == 1) // go forward
-		{
-			double time_start = (double)ros::Time::now().toSec();
-			while ((double)ros::Time::now().toSec() < time_start + keytime)
-			{
-				constant_cmd_vel = command_vel(v, 0, 0, 0, 0, 0);
-				vel_pub.publish(constant_cmd_vel);
-				ros::spinOnce();
-				loop_rate.sleep();
-			}
-			stateMutex.lock();
-			state = 10; // go hovering mode
-			stateMutex.unlock();
-		}
-		else if (state == 2) // go backward
-		{
-			double time_start = (double)ros::Time::now().toSec();
-			while ((double)ros::Time::now().toSec() < time_start + keytime)
-			{
-				constant_cmd_vel = command_vel(-v, 0, 0, 0, 0, 0);
-				vel_pub.publish(constant_cmd_vel);
-				ros::spinOnce();
-				loop_rate.sleep();
-			}
-			stateMutex.lock();
-			state = 10; // go hovering mode
-			stateMutex.unlock();
-		}
-		else if (state == 3) // go right
-		{
-			double time_start = (double)ros::Time::now().toSec();
-			while ((double)ros::Time::now().toSec() < time_start + keytime)
-			{
-				constant_cmd_vel = command_vel(0, v, 0, 0, 0, 0);
-				vel_pub.publish(constant_cmd_vel);
-				ros::spinOnce();
-				loop_rate.sleep();
-			}
-			stateMutex.lock();
-			state = 10; // go hovering mode
-			stateMutex.unlock();
-		}
-		else if (state == 4) // go left
-		{
-			double time_start = (double)ros::Time::now().toSec();
-			while ((double)ros::Time::now().toSec() < time_start + keytime)
-			{
-				constant_cmd_vel = command_vel(0, -v, 0, 0, 0, 0);
-				vel_pub.publish(constant_cmd_vel);
-				ros::spinOnce();
-				loop_rate.sleep();
-			}
-			stateMutex.lock();
-			state = 10; // go hovering mode
-			stateMutex.unlock();
-		}
-		else if (state == 5) // yaw left
-		{
-			double time_start = (double)ros::Time::now().toSec();
-			while ((double)ros::Time::now().toSec() < time_start + keytime)
-			{
-				constant_cmd_vel = command_vel(0, 0, 0, 0, 0, 0.2);
-				ual.setVelocity(constant_cmd_vel);
-				ros::spinOnce();
-				loop_rate.sleep();
-			}
-			stateMutex.lock();
-			state = 10; // go hovering mode
-			stateMutex.unlock();
-		}
-		else if (state == 6) // yaw right
-		{
-			double time_start = (double)ros::Time::now().toSec();
-			while ((double)ros::Time::now().toSec() < time_start + keytime)
-			{
-				constant_cmd_vel = command_vel(0, 0, 0, 0, 0, -0.2);
-				ual.setVelocity(constant_cmd_vel);
-				ros::spinOnce();
-				loop_rate.sleep();
-			}
-			stateMutex.lock();
-			state = 10; // go hovering mode
-			stateMutex.unlock();
-		}
-		else if (state == 30)
-		{
-			pz.reference(zChange);
-		}
 		else // hovering mode
 		{
 			constant_cmd_vel = command_vel(0, 0, 0, 0, 0, 0);
-            ual.setVelocity(constant_cmd_vel);
+			ual.setVelocity(constant_cmd_vel);
 		}
 		ros::spinOnce();
 		loop_rate.sleep();
