@@ -27,10 +27,9 @@ using namespace pcl;
 using namespace std;
 cv_bridge::CvImagePtr cv_ptr;
 float linx = 0, liny = 0, linz = 0, angZ = 0;
-float batteryPercent;
-int velCount, velCount100ms;
-unsigned int droneState;
 std::mutex stateMutex;
+unsigned state = 1;
+ros::Time lastPoseTime;
 
 void Callback(const geometry_msgs::PoseStamped &msg)
 {
@@ -38,13 +37,9 @@ void Callback(const geometry_msgs::PoseStamped &msg)
 	liny = msg.pose.position.y;
 	//linz = msg.pose.position.z;
 	angZ = msg.pose.orientation.z;
+	lastPoseTime = ros::Time::now();
 }
 
-void VelCallback(const geometry_msgs::TwistStampedConstPtr vel)
-{
-	// velCount++;
-	// velCount100ms++;
-}
 geometry_msgs::TwistStamped command_vel(float _ux, float _uy, float _uz, float _ax, float _ay, float _az)
 {
 	geometry_msgs::TwistStamped msg;
@@ -63,7 +58,7 @@ int main(int _argc, char **_argv)
 	ros::init(_argc, _argv, "MAV_Controller");
 	ros::NodeHandle nh;
 	ros::NodeHandle controller_node;
-	ros::Rate loop_rate(20);
+	ros::Rate loop_rate(30);
 
 	ros::Subscriber sub1 = nh.subscribe("/pipe_pose", 5, Callback);
 	ros::Publisher vel_pub = nh.advertise<geometry_msgs::TwistStamped>(nh.resolveName("cmd_vel"), 1);
@@ -84,6 +79,45 @@ int main(int _argc, char **_argv)
 		sleep(1);
 	}
 
+	std::thread keyboard([&]() {
+		unsigned int input;
+		bool run = true;
+		while (run)
+		{
+			auto t0 = chrono::steady_clock::now();
+			std::cout << "1: TakeOff || 2: GoToWaypoint || 3: Control || 4: Land" << std::endl;
+			std::cin >> input;
+			auto t1 = chrono::steady_clock::now();
+			float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() / 1000.0f;
+			if (incT > 0.6)
+			{
+				std::cout << "Time: " << incT << std::endl;
+				switch (input)
+				{
+				case 1:
+					std::cout << "Takeoff" << std::endl;
+					break;
+				case 2:
+					std::cout << "GoToWaypoint" << std::endl;
+					break;
+				case 3:
+					std::cout << "Control" << std::endl;
+					break;
+				case 4:
+					std::cout << "Land" << std::endl;
+					break;
+				default:
+					std::cout << "No command selected" << std::endl;
+				}
+			}
+			// Changing state
+			stateMutex.lock();
+			state = input;
+			stateMutex.unlock();
+		}
+		std::cout << std::fixed << "Closing keyboard thread" << std::endl;
+	});
+
 	PID px(0.3, 0.0, 0.0, -0.5, 0.5, -20, 20);
 	PID py(0.3, 0.0, 0.0, -0.5, 0.5, -20, 20);
 	PID pz(0.3, 0.0, 0.0, -0.5, 0.5, -20, 20);
@@ -100,75 +134,102 @@ int main(int _argc, char **_argv)
 
 	auto t0 = chrono::steady_clock::now();
 	float v = 0.5; // Fixed velocity
-	unsigned state = 1;
+	grvc::ual::Waypoint home;
+	home.header.frame_id = "map";
+	home.pose.position.x = 0;
+	home.pose.position.y = 0;
+	home.pose.position.z = 2;
+	home.pose.orientation.x = 0;
+	home.pose.orientation.y = 0;
+	home.pose.orientation.z = 0;
+	home.pose.orientation.w = 1;
+
+	grvc::ual::Waypoint waypoint;
+	waypoint.header.frame_id = "map";
+	waypoint.pose.position.x = 2;
+	waypoint.pose.position.y = 0;
+	waypoint.pose.position.z = 3;
+	waypoint.pose.orientation.x = 0;
+	waypoint.pose.orientation.y = 0;
+	waypoint.pose.orientation.z = 0;
+	waypoint.pose.orientation.w = 1;
+	bool run = true;
 	while (ros::ok() && run)
 	{
 		if (state == 1)
 		{ // Takeoff
+			std::cout << "Initiating TakeOff" << std::endl;
 			double flight_level = 2;
 			ual.takeOff(flight_level);
+			std::cout << "TakeOff completed" << std::endl;
+			stateMutex.lock();
 			state = 2;
+			stateMutex.unlock();
+			std::cout << "Changed state to GoToWaypoint mode" << std::endl;
 		}
 		else if (state == 2) // goToWaypoint
 		{
-			grvc::ual::Waypoint waypoint;
-			waypoint.header.frame_id = "map";
-			waypoint.pose.position.x = 2;
-			waypoint.pose.position.y = 0;
-			waypoint.pose.position.z = 3;
-			waypoint.pose.orientation.x = 0;
-			waypoint.pose.orientation.y = 0;
-			waypoint.pose.orientation.z = 0;
-			waypoint.pose.orientation.w = 1;
+			std::cout << "Going to waypoint at " << waypoint.pose.position.x << "," << waypoint.pose.position.y << "," << waypoint.pose.position.z << "," << std::endl;
 			ual.goToWaypoint(waypoint);
 			std::cout << "Arrived!" << std::endl;
+			stateMutex.lock();
 			state = 3;
+			stateMutex.unlock();
+			std::cout << "Changed state to control mode" << std::endl;
 		}
 		else if (state == 3) // Control mode
-		{
-			auto t1 = chrono::steady_clock::now();
+		{	
 			auto rosTime = ros::Time::now();
+			if (abs(lastPoseTime.toSec() - rosTime.toSec()) > 0.5)
+			{
+				std::cout << "Not detected pipe in more than 0.5s. Changed state to GoToWayPoint" << std::endl;
+				stateMutex.lock();
+				state = 2;
+				stateMutex.unlock();
+			}
+			else
+			{
+				auto t1 = chrono::steady_clock::now();
+				float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() / 1000.0f;
+				t0 = t1;
+				float ux = px.update(linx, incT);
+				float uy = py.update(liny, incT);
+				float uz = pz.update(linz, incT);
+				float az = gz.update(angZ, incT);
 
-			float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() / 1000.0f;
-			t0 = t1;
-			float ux = px.update(linx, incT);
-			float uy = py.update(liny, incT);
-			float uz = pz.update(linz, incT);
-			float az = gz.update(angZ, incT);
+				geometry_msgs::TwistStamped msg = command_vel(uy, ux, uz, 0, 0, 0); // Change to control yaw too
 
-			geometry_msgs::TwistStamped msg = command_vel(uy, ux, uz, 0, 0, 0);
+				geometry_msgs::PoseStamped msgref;
+				msgref.header.stamp = rosTime;
+				msgref.pose.position.x = px.reference();
+				msgref.pose.position.z = pz.reference();
+				msgref.pose.position.y = py.reference();
+				msgref.pose.orientation.x = gz.reference();
 
-			geometry_msgs::PoseStamped msgref;
-			msgref.header.stamp = rosTime;
-			msgref.pose.position.x = px.reference();
-			msgref.pose.position.z = pz.reference();
-			msgref.pose.position.y = py.reference();
-			msgref.pose.orientation.x = gz.reference();
+				geometry_msgs::PoseStamped msgpos;
+				msgpos.header.stamp = rosTime;
+				msgpos.pose.position.x = -liny;
+				msgpos.pose.position.z = linz;
+				msgpos.pose.position.y = linx;
+				msgpos.pose.orientation.z = angZ;
 
-			geometry_msgs::PoseStamped msgpos;
-			msgpos.header.stamp = rosTime;
-			msgpos.pose.position.x = -liny;
-			msgpos.pose.position.z = linz;
-			msgpos.pose.position.y = linx;
-			msgpos.pose.orientation.z = angZ;
+				vel_pub.publish(msg);
+				pose_pub.publish(msgpos);
+				ref_pub.publish(msgref);
 
-			vel_pub.publish(msg);
-			pose_pub.publish(msgpos);
-			ref_pub.publish(msgref);
-
-			ual.setVelocity(msg);
+				ual.setVelocity(msg);
+			}
 		}
-		else if (state == 0) // Land
+		else if (state == 4) // Land
 		{
+			std::cout << "Going home" << std::endl;
+			ual.goToWaypoint(home);
+			std::cout << "Arrived home" << std::endl;
 			ual.land();
+			std::cout << "Landed" << std::endl;
 			std::cout << "Closing mav_controller" << std::endl;
 			run = false;
 			exit(0);
-		}
-		else // hovering mode
-		{
-			constant_cmd_vel = command_vel(0, 0, 0, 0, 0, 0);
-			ual.setVelocity(constant_cmd_vel);
 		}
 		ros::spinOnce();
 		loop_rate.sleep();

@@ -288,6 +288,7 @@ public:
       pipe_data.pose.orientation.y = 0;
       pipe_data.pose.orientation.z = yaw + M_PI/2;
       pipe_data.pose.orientation.w = 0;
+      pipe_data.header.stamp = ros::Time::now();
 
       // For Kalman filter
       ekf_pipe_data.pose.position.x = pipe_center.x;
@@ -297,6 +298,7 @@ public:
       ekf_pipe_data.pose.orientation.y = q.y();
       ekf_pipe_data.pose.orientation.z = q.z();
       ekf_pipe_data.pose.orientation.w = q.w();
+      ekf_pipe_data.header.stamp = ros::Time::now();
 
       pipe_pub_.publish(pipe_data);
       ekf_pub_.publish(ekf_pipe_data);
