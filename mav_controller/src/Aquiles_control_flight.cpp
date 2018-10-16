@@ -28,7 +28,7 @@ using namespace std;
 cv_bridge::CvImagePtr cv_ptr;
 float linx = 0, liny = 0, linz = 0, angZ = 0;
 std::mutex stateMutex;
-unsigned state = 1;
+unsigned int state = 0;
 ros::Time lastPoseTime;
 
 void Callback(const geometry_msgs::PoseStamped &msg)
@@ -55,31 +55,8 @@ geometry_msgs::TwistStamped command_vel(float _ux, float _uy, float _uz, float _
 
 int main(int _argc, char **_argv)
 {
-	ros::init(_argc, _argv, "MAV_Controller");
-	ros::NodeHandle nh;
-	ros::NodeHandle controller_node;
-	ros::Rate loop_rate(30);
-
-	ros::Subscriber sub1 = nh.subscribe("/pipe_pose", 5, Callback);
-	ros::Publisher vel_pub = nh.advertise<geometry_msgs::TwistStamped>(nh.resolveName("cmd_vel"), 1);
-	ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 5);
-	ros::Publisher ref_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 5);
-
-	std_msgs::Empty emp_msg;
-	geometry_msgs::TwistStamped constant_cmd_vel;
-
-	ros::AsyncSpinner spinner(4);
-	spinner.start();
-
-	// INIT UAL
-	grvc::ual::UAL ual(_argc, _argv);
-	while (!ual.isReady() && ros::ok())
-	{
-		std::cout << "UAL not ready!" << std::endl;
-		sleep(1);
-	}
-
 	std::thread keyboard([&]() {
+		std::cout << "Initializating keyboard thread" << std::endl;
 		unsigned int input;
 		bool run = true;
 		while (run)
@@ -118,10 +95,34 @@ int main(int _argc, char **_argv)
 		std::cout << std::fixed << "Closing keyboard thread" << std::endl;
 	});
 
-	PID px(0.3, 0.0, 0.0, -0.5, 0.5, -20, 20);
-	PID py(0.3, 0.0, 0.0, -0.5, 0.5, -20, 20);
-	PID pz(0.3, 0.0, 0.0, -0.5, 0.5, -20, 20);
-	PID gz(0.3, 0.0, 0.0, -0.5, 0.5, -20, 20);
+	ros::init(_argc, _argv, "MAV_Controller");
+	ros::NodeHandle nh;
+	ros::NodeHandle controller_node;
+	ros::Rate loop_rate(30);
+
+	ros::Subscriber sub1 = nh.subscribe("/pipe_pose", 5, Callback);
+	ros::Publisher vel_pub = nh.advertise<geometry_msgs::TwistStamped>(nh.resolveName("cmd_vel"), 1);
+	ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 5);
+	ros::Publisher ref_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 5);
+
+	std_msgs::Empty emp_msg;
+	geometry_msgs::TwistStamped constant_cmd_vel;
+
+	ros::AsyncSpinner spinner(4);
+	spinner.start();
+
+	// INIT UAL
+	grvc::ual::UAL ual(_argc, _argv);
+	while (!ual.isReady() && ros::ok())
+	{
+		std::cout << "UAL not ready!" << std::endl;
+		sleep(1);
+	}
+
+	PID px(0.3, 0.0, 0.0, -0.3, 0.3, -20, 20);
+	PID py(0.3, 0.0, 0.0, -0.3, 0.3, -20, 20);
+	PID pz(0.3, 0.0, 0.0, -0.3, 0.3, -20, 20);
+	PID gz(0.3, 0.0, 0.0, -0.3, 0.3, -20, 20);
 
 	px.reference(0);
 	py.reference(0);
@@ -133,7 +134,6 @@ int main(int _argc, char **_argv)
 	pz.enableRosInterface("/mav_controller/pid_z");
 
 	auto t0 = chrono::steady_clock::now();
-	float v = 0.5; // Fixed velocity
 	grvc::ual::Waypoint home;
 	home.header.frame_id = "map";
 	home.pose.position.x = 0;
@@ -156,8 +156,8 @@ int main(int _argc, char **_argv)
 	bool run = true;
 	while (ros::ok() && run)
 	{
-		if (state == 1)
-		{ // Takeoff
+		if (state == 1) // Takeoff mode
+		{ 
 			std::cout << "Initiating TakeOff" << std::endl;
 			double flight_level = 2;
 			ual.takeOff(flight_level);
@@ -167,7 +167,7 @@ int main(int _argc, char **_argv)
 			stateMutex.unlock();
 			std::cout << "Changed state to GoToWaypoint mode" << std::endl;
 		}
-		else if (state == 2) // goToWaypoint
+		else if (state == 2) // GoToWaypoint mode
 		{
 			std::cout << "Going to waypoint at " << waypoint.pose.position.x << "," << waypoint.pose.position.y << "," << waypoint.pose.position.z << "," << std::endl;
 			ual.goToWaypoint(waypoint);
@@ -178,7 +178,7 @@ int main(int _argc, char **_argv)
 			std::cout << "Changed state to control mode" << std::endl;
 		}
 		else if (state == 3) // Control mode
-		{	
+		{
 			auto rosTime = ros::Time::now();
 			if (abs(lastPoseTime.toSec() - rosTime.toSec()) > 0.5)
 			{
@@ -220,7 +220,7 @@ int main(int _argc, char **_argv)
 				ual.setVelocity(msg);
 			}
 		}
-		else if (state == 4) // Land
+		else if (state == 4) // Land mode
 		{
 			std::cout << "Going home" << std::endl;
 			ual.goToWaypoint(home);
@@ -230,6 +230,9 @@ int main(int _argc, char **_argv)
 			std::cout << "Closing mav_controller" << std::endl;
 			run = false;
 			exit(0);
+		}
+		else{
+			std::cout << "No mode selected" << std::endl;
 		}
 		ros::spinOnce();
 		loop_rate.sleep();
