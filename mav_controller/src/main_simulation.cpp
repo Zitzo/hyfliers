@@ -99,6 +99,7 @@ int main(int _argc, char **_argv)
 	ros::Subscriber sub1 = nh.subscribe("/ekf_pose", 10, Callback_ekf);
 	ros::Subscriber sub2 = nh.subscribe("/pipe_pose", 10, Callback);
 	ros::Subscriber alt_sub = nh.subscribe("/uav_1/mavros/local_position/pose", 10, IMUCallback); 
+	//ros::Subscriber alt_sub = nh.subscribe("/mavros/local_position/pose", 10, IMUCallback);
 	ros::Subscriber vel_sub	= nh.subscribe(nh.resolveName("cmd_vel"),50, VelCallback);
 	ros::Publisher vel_pub = nh.advertise<geometry_msgs::TwistStamped>("/simulated/cmd_vel", 1);
 	ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 5);
@@ -127,7 +128,7 @@ int main(int _argc, char **_argv)
 		[&](){
 			for(;;){
 				std::cout << "Set Z reference: ";
-				std::cin >> reference_z;
+			    std::cin >> reference_z;
 
 				if (reference_z == 0)
 				ual.land();
@@ -181,7 +182,7 @@ int main(int _argc, char **_argv)
 		msgpos.pose.position.y = linx;
 		msgpos.pose.orientation.z = angZ;
 
-        ual.setVelocity(msg);
+       ual.setVelocity(msg);
 
 		vel_pub.publish(msg);
 		pose_pub.publish(msgpos);

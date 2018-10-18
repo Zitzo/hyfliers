@@ -29,6 +29,8 @@ using namespace cv;
 unsigned t0, t1, t2, t3;
 Point pipe_center;
 Eigen::Quaternionf q;
+cv::Mat current_depth_msg;
+sensor_msgs::Image image_depth_msg;
 
 // Function declarations for PCA
 void drawAxis(Mat &, Point, Point, Scalar, const float);
@@ -120,7 +122,7 @@ float altitude,roll,pitch;
  
 void IMUCallback(const geometry_msgs::PoseStamped::ConstPtr& _imu)
 {
-  altitude = _imu->pose.position.z;
+  //altitude = _imu->pose.position.z;
   //altitude = 1000;  // for testing
   q.x() = _imu->pose.orientation.x;
   q.y() = _imu->pose.orientation.y;
@@ -135,6 +137,7 @@ class ImageProcessor
   ros::NodeHandle nh_;
   image_transport::ImageTransport it_;
   image_transport::Subscriber img_sub_;
+  image_transport::Subscriber img_depth_sub_;
   image_transport::Publisher img_pub_;
   ros::Publisher pipe_pub_;
   ros::Publisher ekf_pub_;
@@ -144,14 +147,15 @@ public:
   ImageProcessor(ros::NodeHandle &n) : nh_(n),
                                        it_(nh_)
   {
-    img_sub_ = it_.subscribe("/aeroarms_1/camera_0/image_raw", 1, &ImageProcessor::image_callback, this);
-    //img_sub_ = it_.subscribe("/camera/image", 1, &ImageProcessor::image_callback, this);
+    //img_sub_ = it_.subscribe("/aeroarms_1/camera_0/image_raw", 1, &ImageProcessor::image_callback, this);
+    img_sub_ = it_.subscribe("/camera/image", 1, &ImageProcessor::image_callback, this);
+    img_depth_sub_ = it_.subscribe("/camera/image_depth", 1, &ImageProcessor::image_depth_callback, this);
    // sub_alt_ = n.subscribe("/ardrone/navdata", 1000, altitude_Callback);
     img_pub_ = it_.advertise("/output_image", 1);
     pipe_pub_ = n.advertise<geometry_msgs::PoseStamped>("/pipe_pose", 1000);
     ekf_pub_ = n.advertise<geometry_msgs::PoseStamped>("/ekf/pipe_pose", 1);
-    alt_sub_ = n.subscribe("/uav_1/mavros/local_position/pose", 1000, IMUCallback);
-    //alt_sub_ = n.subscribe("/mavros/local_position/pose", 1000, IMUCallback);
+    //alt_sub_ = n.subscribe("/uav_1/mavros/local_position/pose", 1000, IMUCallback);
+    alt_sub_ = n.subscribe("/mavros/local_position/pose", 1000, IMUCallback);
 
     //pipe_pub_ = n.advertise<geometry_msgs::Twist>("/pipe_pose", 1000);
 
@@ -176,6 +180,23 @@ public:
   //    return;
   //  }
  // }
+
+ void image_depth_callback(const sensor_msgs::ImageConstPtr &depth_msg)
+ {
+   cv_bridge::CvImagePtr cv_ptr_depth;
+    image_depth_msg = *depth_msg;  
+    try
+    {
+      cv_ptr_depth = cv_bridge::toCvCopy(depth_msg, depth_msg->encoding);
+    }
+    catch (cv_bridge::Exception &e)
+    {
+      ROS_ERROR("cv_bridge exception: %s", e.what());
+      return;
+    }
+
+    current_depth_msg = cv_ptr_depth->image; 
+ }
 
   void image_callback(const sensor_msgs::ImageConstPtr &msg)
   {
@@ -219,10 +240,10 @@ public:
     //grey pipe detection
     rgbd::ColorClusterSpace *ccs = rgbd::createSingleClusteredSpace(
         0, 180,
-        0, 150,
-        0, 150,
-        //60, 70,
-        //130, 150,
+        //0, 150,
+        //0, 150,
+        60, 70,
+        130, 150,
         180, 255, 255,
         32);
 
@@ -269,6 +290,30 @@ public:
     // Convert image to binary
     Mat bw;
     threshold(gray, bw, 50, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+    // Get the average of the pipes height
+    float sumatory = 0;
+    int num_pixel = 0;
+    for (int length = 0; length < image_depth_msg.height; length++)
+    {
+        for (int width = 0; width < image_depth_msg.width; width++)
+        {
+            if(bw.at<uint16_t>(length,width) == 255)
+            {
+                if (current_depth_msg.at<uint16_t>(length, width)!=0)
+                {
+                sumatory += current_depth_msg.at<uint16_t>(length, width);
+                num_pixel++;
+                }
+            }
+        }
+    }
+    //float height = 0;
+    if (num_pixel > 0)
+        altitude = (sumatory/num_pixel)/1000;
+
+    std::cout << "Height: " << altitude << "\n";
+    
+
     // Find all the contours in the thresholded image
     vector<Vec4i> hierarchy;
     vector<vector<Point>> contours;

@@ -211,6 +211,7 @@ include_directories(
 #add_executable(imagen src/imagen.cpp)
 add_executable(pipe_detection src/detector.cpp)
 add_executable(simulator src/simulation.cpp)
+add_executable(depth src/depth.cpp)
 
 #target_include_directories(imagen PUBLIC ${catkin_INCLUDE_DIRS})
 #target_include_directories(imagen PUBLIC ${OpenCV_INCLUDE_DIRS})
@@ -218,6 +219,8 @@ target_include_directories(pipe_detection PUBLIC ${catkin_INCLUDE_DIRS})
 target_include_directories(pipe_detection PUBLIC ${OpenCV_INCLUDE_DIRS})
 target_include_directories(simulator PUBLIC ${catkin_INCLUDE_DIRS})
 target_include_directories(simulator PUBLIC ${OpenCV_INCLUDE_DIRS})
+target_include_directories(depth PUBLIC ${catkin_INCLUDE_DIRS})
+target_include_directories(depth PUBLIC ${OpenCV_INCLUDE_DIRS})
 
 
 #target_link_libraries(imagen ${catkin_LIBRARIES} rgbd_tools)
@@ -226,4 +229,5 @@ target_link_libraries(pipe_detection ${catkin_LIBRARIES} rgbd_tools)
 target_link_libraries(pipe_detection ${OpenCV_LIBRARIES} )
 target_link_libraries(simulator ${catkin_LIBRARIES} rgbd_tools)
 target_link_libraries(simulator ${OpenCV_LIBRARIES} )
-
+target_link_libraries(depth ${catkin_LIBRARIES} rgbd_tools)
+target_link_libraries(depth ${OpenCV_LIBRARIES} )
