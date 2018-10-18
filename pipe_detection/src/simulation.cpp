@@ -145,11 +145,13 @@ public:
                                        it_(nh_)
   {
     img_sub_ = it_.subscribe("/aeroarms_1/camera_0/image_raw", 1, &ImageProcessor::image_callback, this);
+    //img_sub_ = it_.subscribe("/camera/image", 1, &ImageProcessor::image_callback, this);
    // sub_alt_ = n.subscribe("/ardrone/navdata", 1000, altitude_Callback);
     img_pub_ = it_.advertise("/output_image", 1);
     pipe_pub_ = n.advertise<geometry_msgs::PoseStamped>("/pipe_pose", 1000);
     ekf_pub_ = n.advertise<geometry_msgs::PoseStamped>("/ekf/pipe_pose", 1);
     alt_sub_ = n.subscribe("/uav_1/mavros/local_position/pose", 1000, IMUCallback);
+    //alt_sub_ = n.subscribe("/mavros/local_position/pose", 1000, IMUCallback);
 
     //pipe_pub_ = n.advertise<geometry_msgs::Twist>("/pipe_pose", 1000);
 
