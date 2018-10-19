@@ -40,6 +40,11 @@ void Callback(const geometry_msgs::PoseStamped &msg)
 	lastPoseTime = ros::Time::now();
 }
 
+void IMUCallback(const geometry_msgs::PoseStamped::ConstPtr& imu) 
+{ 
+  linz = imu->pose.position.z; 
+} 
+
 geometry_msgs::TwistStamped command_vel(float _ux, float _uy, float _uz, float _ax, float _ay, float _az)
 {
 	geometry_msgs::TwistStamped msg;
@@ -104,6 +109,7 @@ int main(int _argc, char **_argv)
 	ros::Publisher vel_pub = nh.advertise<geometry_msgs::TwistStamped>(nh.resolveName("cmd_vel"), 1);
 	ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 5);
 	ros::Publisher ref_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 5);
+	ros::Subscriber alt_sub = nh.subscribe("/mavros/local_position/pose", 10, IMUCallback);
 
 	std_msgs::Empty emp_msg;
 	geometry_msgs::TwistStamped constant_cmd_vel;
@@ -119,10 +125,10 @@ int main(int _argc, char **_argv)
 		sleep(1);
 	}
 
-	PID px(0.3, 0.0, 0.0, -0.3, 0.3, -20, 20);
-	PID py(0.3, 0.0, 0.0, -0.3, 0.3, -20, 20);
-	PID pz(0.3, 0.0, 0.0, -0.3, 0.3, -20, 20);
-	PID gz(0.3, 0.0, 0.0, -0.3, 0.3, -20, 20);
+	PID px(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
+	PID py(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
+	PID pz(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
+	PID gz(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
 
 	px.reference(0);
 	py.reference(0);
@@ -197,7 +203,7 @@ int main(int _argc, char **_argv)
 				float uz = pz.update(linz, incT);
 				float az = gz.update(angZ, incT);
 
-				geometry_msgs::TwistStamped msg = command_vel(uy, ux, uz, 0, 0, 0); // Change to control yaw too
+				geometry_msgs::TwistStamped msg = command_vel(uy, ux, uz, 0, 0, az); // Change to control yaw too
 
 				geometry_msgs::PoseStamped msgref;
 				msgref.header.stamp = rosTime;

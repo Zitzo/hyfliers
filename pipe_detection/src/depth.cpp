@@ -309,7 +309,7 @@ public:
     }
     //float height = 0;
     if (num_pixel > 0)
-        altitude = (sumatory/num_pixel)/1000;
+        altitude = (sumatory/num_pixel)*1.0000000474974513e-03;
 
     std::cout << "Height: " << altitude << "\n";
     
