@@ -1,0 +1,12 @@
+<launch>
+
+<node pkg="pipe_detection" type="simulator" name="simulator" 
+output="screen"/>
+
+<node pkg="state_filter" type="state_filter" name="state_filter" 
+output="screen"/>
+
+<node pkg="mav_controller" type="control_flight" name="control_flight" 
+output="screen"/>
+
+</launch>

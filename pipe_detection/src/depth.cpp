@@ -122,7 +122,7 @@ float altitude,roll,pitch;
  
 void IMUCallback(const geometry_msgs::PoseStamped::ConstPtr& _imu)
 {
-  //altitude = _imu->pose.position.z;
+  //altitude = _imu->pose.position.z;  // Getting it from the IMU, if commented we get it from the depth image
   //altitude = 1000;  // for testing
   q.x() = _imu->pose.orientation.x;
   q.y() = _imu->pose.orientation.y;
@@ -307,11 +307,14 @@ public:
             }
         }
     }
-    //float height = 0;
-    if (num_pixel > 0)
-        altitude = (sumatory/num_pixel)*1.0000000474974513e-03;
 
-    std::cout << "Height: " << altitude << "\n";
+    float depth_alt; 
+    if (num_pixel > 0)
+        depth_alt = (sumatory/num_pixel)*1.0000000474974513e-03;
+
+        altitude = depth_alt; // if commented we get it from the imu
+
+    //std::cout << "Height: " << altitude << "\n";
     
 
     // Find all the contours in the thresholded image
