@@ -15,7 +15,12 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_ros
   image_transport
   cv_bridge
-  pid_tune_gui
+  message_generation
+  uav_abstraction_layer
+  tf
+  sensor_msgs
+  std_msgs
+  std_srvs
 )
 
 
@@ -111,12 +116,28 @@ set_target_properties(${OpenCV_LIBS} PROPERTIES MAP_IMPORTED_CONFIG_RELWITHDEBIN
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
-catkin_package(
+#catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES aruco
 #  CATKIN_DEPENDS roscpp rospy std_msgs
-#  DEPENDS system_lib
+#   DEPENDS pid_tune_gui
+#)
+
+add_service_files(
+  FILES
+  Float32Param.srv
 )
+
+generate_messages(
+    DEPENDENCIES std_msgs
+)
+
+catkin_package(
+  CATKIN_DEPENDS roscpp message_runtime std_msgs uav_abstraction_layer std_srvs
+  INCLUDE_DIRS  
+)
+
+
 
 ###########
 ## Build ##
@@ -124,10 +145,10 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(
+#include_directories(
 # include
-  ${catkin_INCLUDE_DIRS}
-)
+#  ${catkin_INCLUDE_DIRS}
+#)
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
@@ -207,19 +228,19 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 ##añadimos el ejecutable video_capture
-add_executable(uav_pid src/main.cpp src/PID.cpp src/PID.h src/Joystick.h src/Joystick.inl)
+add_executable(uav_pid src/main.cpp src/PID.cpp src/PID.h)
 add_executable(pid_simulator src/main_simulation.cpp src/PID.cpp src/PID.h )
 add_executable(first_flight src/Aquiles_ff.cpp)
 add_executable(control_flight src/Aquiles_control_flight.cpp src/PID.cpp src/PID.h)
  ##incluir  directorios y librerias
 target_include_directories(uav_pid PUBLIC ${catkin_INCLUDE_DIRS})
-target_link_libraries(uav_pid ${catkin_LIBRARIES} ) 
+target_link_libraries(uav_pid ${catkin_LIBRARIES}) 
 target_include_directories(pid_simulator PUBLIC ${catkin_INCLUDE_DIRS})
-target_link_libraries(pid_simulator ${catkin_LIBRARIES} ) 
+target_link_libraries(pid_simulator ${catkin_LIBRARIES}) 
 target_include_directories(first_flight PUBLIC ${catkin_INCLUDE_DIRS})
-target_link_libraries(first_flight ${catkin_LIBRARIES} ) 
+target_link_libraries(first_flight ${catkin_LIBRARIES}) 
 target_include_directories(control_flight PUBLIC ${catkin_INCLUDE_DIRS})
-target_link_libraries(control_flight ${catkin_LIBRARIES} )
+target_link_libraries(control_flight ${catkin_LIBRARIES})
 
 
 ##incluir directorio y librerias de opencv porqe ros no las detecta

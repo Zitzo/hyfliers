@@ -16,7 +16,6 @@
 #include <thread>
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/Point.h"
-#include "ardrone_autonomy/Navdata.h" 
 #include <uav_abstraction_layer/ual.h>
 #include "std_msgs/Float64.h"
 

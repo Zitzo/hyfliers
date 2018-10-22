@@ -22,7 +22,7 @@
 
 #include <limits>
 #include <ros/ros.h>
-#include <pid_tune_gui/Float32Param.h>
+//#include <mav_controller/Float32Param.h>
 #include <thread>
 
 class PID
@@ -86,19 +86,19 @@ class PID
     }
 
   private:
-    bool serviceKp(pid_tune_gui::Float32Param::Request &_req, pid_tune_gui::Float32Param::Response &_res) { mKp = _req.param; };
-    bool serviceKi(pid_tune_gui::Float32Param::Request &_req, pid_tune_gui::Float32Param::Response &_res) { mKi = _req.param; };
-    bool serviceKd(pid_tune_gui::Float32Param::Request &_req, pid_tune_gui::Float32Param::Response &_res) { mKd = _req.param; };
-    bool serviceKsat(pid_tune_gui::Float32Param::Request &_req, pid_tune_gui::Float32Param::Response &_res)
+    /*bool serviceKp(mav_controller::Float32Param::Request &_req, mav_controller::Float32Param::Response &_res) { mKp = _req.param; };
+    bool serviceKi(mav_controller::Float32Param::Request &_req, mav_controller::Float32Param::Response &_res) { mKi = _req.param; };
+    bool serviceKd(mav_controller::Float32Param::Request &_req, mav_controller::Float32Param::Response &_res) { mKd = _req.param; };
+    bool serviceKsat(mav_controller::Float32Param::Request &_req, mav_controller::Float32Param::Response &_res)
     {
         mMinSat = -_req.param;
         mMaxSat = _req.param;
     };
-    bool serviceKwindup(pid_tune_gui::Float32Param::Request &_req, pid_tune_gui::Float32Param::Response &_res)
+    bool serviceKwindup(mav_controller::Float32Param::Request &_req, mav_controller::Float32Param::Response &_res)
     {
         mWindupMin = -_req.param;
         mWindupMax = _req.param;
-    };
+    };*/
 
   private:
     float mReference;

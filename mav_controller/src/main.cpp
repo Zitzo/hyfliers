@@ -16,10 +16,8 @@
 #include <thread>
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/Point.h"
-#include "ardrone_autonomy/Navdata.h"
 #include <std_msgs/Empty.h>
 #include <mutex>
-#include "Joystick.h"
 #include <geometry_msgs/TwistStamped.h>
 
 using namespace cv;
@@ -38,14 +36,6 @@ void Callback(const geometry_msgs::PoseStamped &msg)
 	liny = msg.pose.position.y;
 	//linz = msg.pose.position.z;
 	angZ = msg.pose.orientation.z;
-}
-
-void IMUCallback(const ardrone_autonomy::Navdata imu)
-{
-	linz = imu.altd;
-	linz = linz / 1000;
-	batteryPercent = imu.batteryPercent;
-	droneState = imu.state;
 }
 
 void VelCallback(const geometry_msgs::TwistStampedConstPtr vel)
@@ -150,10 +140,8 @@ int main(int _argc, char **_argv)
 	ros::NodeHandle controller_node;
 	ros::Rate loop_rate(20);
 
-	auto controller = Joystick(controller_node);
-
 	ros::Subscriber sub1 = nh.subscribe("/pipe_pose", 5, Callback);
-	ros::Subscriber alt_sub = nh.subscribe("/ardrone/navdata", 5, IMUCallback);
+	ros::Subscriber alt_sub = nh.subscribe("/pipe_pose", 5, Callback);
 	ros::Subscriber vel_sub = nh.subscribe(nh.resolveName("cmd_vel"), 5, VelCallback);
 	ros::Publisher vel_pub = nh.advertise<geometry_msgs::TwistStamped>(nh.resolveName("cmd_vel"), 1);
 	ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 5);

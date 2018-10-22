@@ -44,6 +44,7 @@ find_package(catkin REQUIRED COMPONENTS
 			cv_bridge
 			std_srvs
 			tf
+			message_generation
 			)
 
 add_service_files(
@@ -56,7 +57,7 @@ generate_messages(
 )
 
 catkin_package(
-  CATKIN_DEPENDS roscpp image_transport uav_abstraction_layer cv_bridge geometry_msgs  std_srvs
+  CATKIN_DEPENDS roscpp image_transport uav_abstraction_layer cv_bridge geometry_msgs  std_srvs message_runtime
   INCLUDE_DIRS 
 )
 
