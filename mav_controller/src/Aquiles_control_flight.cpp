@@ -353,7 +353,8 @@ int main(int _argc, char **_argv)
 			std::cout << "Changed to repose mode" << std::endl;
 		}
 		else if (state == 7) // Mav_controller close 
-		{			
+		{	
+			cinMutex.lock();		
 			if (security == 0)
 			{
 				std::cout << "Not secure to close mav_controller mode, changing to control mode" << std::endl;
@@ -365,14 +366,15 @@ int main(int _argc, char **_argv)
 			else
 			{ int close = -1;
 				std::cout << "Are you sure you want to close mav_controller: yes=1 no=0 ";
+				std::cin >> close;
 				if (close == 1)
 				{
-				std::cin >> close;
 				std::cout << "Closing mav_controller" << std::endl;
 				run = false;
 				exit(0);
 				}
 			}
+			cinMutex.unlock();
 		}
 		else if (state == 8)  // Waypoint change
 		{		
