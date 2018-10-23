@@ -55,7 +55,6 @@ void Callback_ekf(const geometry_msgs::PoseStamped &msg)
 	
 }
 
-
 geometry_msgs::TwistStamped command_vel(float _ux, float _uy, float _uz, float _ax, float _ay, float _az)
 {
 	geometry_msgs::TwistStamped msg;
@@ -142,8 +141,6 @@ int main(int _argc, char **_argv)
 	ros::Publisher vel_pub = nh.advertise<geometry_msgs::TwistStamped>(nh.resolveName("cmd_vel"), 1);
 	ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 5);
 	ros::Publisher ref_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 5);
-	//ros::Subscriber alt_sub = nh.subscribe("/mavros/local_position/pose", 10, IMUCallback);  //real
-	//ros::Subscriber alt_sub = nh.subscribe("/uav_1/mavros/local_position/pose", 10, IMUCallback); // simulation
 
 	std_msgs::Empty emp_msg;
 	geometry_msgs::TwistStamped constant_cmd_vel;
