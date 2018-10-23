@@ -144,7 +144,8 @@ public:
                                        it_(nh_)
   {
     img_sub_ = it_.subscribe("/aeroarms_1/camera_0/image_raw", 1, &ImageProcessor::image_callback, this);  //simulation
-    //img_sub_ = it_.subscribe("/camera/image", 1, &ImageProcessor::image_callback, this);  //real
+    //img_sub_ = it_.subscribe("/camera/color/image_raw", 1, &ImageProcessor::image_callback, this);  //real
+    //img_sub_ = it_.subscribe("/camera/image", 1, &ImageProcessor::image_callback, this);  // old real
    // sub_alt_ = n.subscribe("/ardrone/navdata", 1000, altitude_Callback);
     img_pub_ = it_.advertise("/output_image", 1);
     pipe_pub_ = n.advertise<geometry_msgs::PoseStamped>("/pipe_pose", 1000);

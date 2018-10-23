@@ -1,6 +1,6 @@
 <launch>
 
-<node pkg="pipe_detection" type="simulator" name="simulator" 
+<node pkg="pipe_detection" type="pipe_detection" name="pipe_detection" 
 output="screen"/>
 
 <node pkg="state_filter" type="state_filter" name="state_filter" 

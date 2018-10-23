@@ -18,17 +18,24 @@
 #include <Eigen/Eigen>
 #include <Eigen/Geometry> 
 #include <geometry_msgs/PoseStamped.h>
+#include <cstddef>
 //#include <tf/transform_broadcaster.h>
+//#include <uav_abstraction_layer/ual.h>
 
 
 using namespace std;
 using namespace cv;
 unsigned t0, t1, t2, t3;
 Point pipe_center;
+Eigen::Quaternionf q;
 
 // Function declarations for PCA
 void drawAxis(Mat &, Point, Point, Scalar, const float);
 double getOrientation(const vector<Point> &, vector<Point> &, vector<Point> &, Mat &);
+//void ual_init(int, char**);
+
+// Functions
+
 void drawAxis(Mat &img, Point p, Point q, Scalar colour, const float scale = 0.2)
 {
   double angle;
@@ -87,11 +94,14 @@ double getOrientation(const vector<Point> &pts, vector<double> &pipeCentroid, ve
   //std::cout << "P1 x,y: " << p1.x << "," << p1.y << std::endl;
   //std::cout << "P2 x,y: " << p2.x << "," << p2.y << std::endl;
   //std::cout << "Angle: " << angle * 180 / M_PI << std::endl;
+  //std::cout << "Angle: " << angle << std::endl;
   // Add cntr point and two eigen_vecs and eigen_val (p1 and p2)
   pipeCentroid.push_back(cntr.x);
   pipeCentroid.push_back(cntr.y);
   pipeP1.push_back(p1.x);
   pipeP1.push_back(p1.y);
+  if (angle > 0) 
+  angle = angle*(-1);  // to avoid noise changing reference
   return angle;
 }
 
@@ -107,6 +117,18 @@ std::string window_name = "Edge Map";
 float altitude,roll,pitch;
 
  
+void IMUCallback(const geometry_msgs::PoseStamped::ConstPtr& _imu)
+{
+  altitude = _imu->pose.position.z;
+  //altitude = 1000;  // for testing
+  q.x() = _imu->pose.orientation.x;
+  q.y() = _imu->pose.orientation.y;
+  q.z() = _imu->pose.orientation.z;
+  q.w() = _imu->pose.orientation.w;
+  //roll = _imu.rotX;
+  //pitch = _imu.rotY;
+}
+
 class ImageProcessor
 {
   ros::NodeHandle nh_;
@@ -121,20 +143,22 @@ public:
   ImageProcessor(ros::NodeHandle &n) : nh_(n),
                                        it_(nh_)
   {
-    img_sub_ = it_.subscribe("/ardrone/bottom/image_raw", 1, &ImageProcessor::image_callback, this);
-
+    //img_sub_ = it_.subscribe("/aeroarms_1/camera_0/image_raw", 1, &ImageProcessor::image_callback, this);  //simulation
+    img_sub_ = it_.subscribe("/camera/color/image_raw", 1, &ImageProcessor::image_callback, this);  //real
+    //img_sub_ = it_.subscribe("/camera/image", 1, &ImageProcessor::image_callback, this);  // old real
+   // sub_alt_ = n.subscribe("/ardrone/navdata", 1000, altitude_Callback);
     img_pub_ = it_.advertise("/output_image", 1);
-    pipe_pub_ = n.advertise<geometry_msgs::PoseStamped>("/pipe_pose", 1);
+    pipe_pub_ = n.advertise<geometry_msgs::PoseStamped>("/pipe_pose", 1000);
     ekf_pub_ = n.advertise<geometry_msgs::PoseStamped>("/ekf/pipe_pose", 1);
-
-
+    //alt_sub_ = n.subscribe("/uav_1/mavros/local_position/pose", 1000, IMUCallback); //simulation
+    alt_sub_ = n.subscribe("/mavros/local_position/pose", 1000, IMUCallback);   //real
 
     //pipe_pub_ = n.advertise<geometry_msgs::Twist>("/pipe_pose", 1000);
 
     // Camera intrinsics
-    mIntrinsic << 726.429011, 0, 283.809411, // Parrot intrinsic parameters
-        0, 721.683494, 209.109682,
-        0, 0, 1;
+    mIntrinsic << 674.3157444517138, 0.0, 400.5, // Parrot intrinsic parameters
+        0.0, 674.3157444517138, 300.5,
+        0.0, 0.0, 1.0;
   }
 
   ~ImageProcessor() {}
@@ -192,25 +216,30 @@ public:
     std::vector<rgbd::ImageObject> objects;
     // BOViL::ColorClusterSpace *ccs = BOViL::CreateHSVCS_8c(255,255,255);
 
-    //gray pipe detection
-    //rgbd::ColorClusterSpace *ccs = rgbd::createSingleClusteredSpace(
-    //    90, 130,
-    //    10, 70,
-    //    100, 180,
-    //    180, 255, 255,
-    //    32);
-
-    rgbd::ColorClusterSpace *ccs = rgbd::createSingleSparseCluster(
-        {std::pair<unsigned char, unsigned char>(0,30),std::pair<unsigned char, unsigned char>(140,180)},
-        {std::pair<unsigned char, unsigned char>(50, 255)},
-        {std::pair<unsigned char, unsigned char>(50, 255)},
+    //grey pipe detection
+    rgbd::ColorClusterSpace *ccs = rgbd::createSingleClusteredSpace(
+        0, 180,
+        //0, 150,
+        //0, 150,
+        60, 70,   // simulation or real
+        130, 150,
         180, 255, 255,
         32);
+
+
+
+    // Red cardboard detection
+   // rgbd::ColorClusterSpace *ccs = rgbd::createSingleSparseCluster(
+   //     {std::pair<unsigned char, unsigned char>(0,30),std::pair<unsigned char, unsigned char>(140,180)},
+   //     {std::pair<unsigned char, unsigned char>(50, 255)},
+   //     {std::pair<unsigned char, unsigned char>(50, 255)},
+   //     180, 255, 255,
+   //     32);
 
     rgbd::ColorClustering<uchar>(dst.data,
                                  dst.cols,
                                  dst.rows,
-                                 10000,  // minimun number of pixels detected
+                                 5000,  // minimun number of pixels detected
                                  objects,
                                  *ccs);
 
@@ -225,8 +254,8 @@ public:
           ob.height());
       cv::rectangle(display, bb, cv::Scalar(0, 255, 0), 2);
     }
-    //imshow(window_name, dst);
-    //imshow(window_name + "_res", display);
+    imshow(window_name, dst);
+    imshow(window_name + "_res", display);
     cv::waitKey(3);
 
     //Publish image
@@ -249,7 +278,7 @@ public:
       // Calculate the area of each contour
       double area = contourArea(contours[i]);
       // Ignore contours that are too small or too large, MODIFIED AS PIPE IS A VERY LARGE OBJECT!!!
-      if (area < 1e4 || 1e8 < area)
+      if (area < 1e3 || 1e8 < area)
         continue;
       // Draw each contour only for visualisation purposes
       drawContours(src, contours, static_cast<int>(i), Scalar(0, 0, 255), 2, 8, hierarchy, 0);
@@ -257,47 +286,47 @@ public:
       vector<double> centroid;
       // Find the orientation of each shape
       double yaw = getOrientation(contours[i], centroid, p1, src);
-      //Get quaternion
+      // Getting angles for EKF
+      auto euler = q.toRotationMatrix().eulerAngles(0, 1, 2);
       Eigen::Matrix3f m;
-      m = Eigen::AngleAxisf(roll, Eigen::Vector3f::UnitX())
-      * Eigen::AngleAxisf(pitch,  Eigen::Vector3f::UnitY())
+      m = Eigen::AngleAxisf(euler[0]-M_PI, Eigen::Vector3f::UnitX())
+      * Eigen::AngleAxisf(euler[1]-M_PI,  Eigen::Vector3f::UnitY())
       * Eigen::AngleAxisf((yaw+M_PI/2), Eigen::Vector3f::UnitZ()); // changing value of yaw so that the position is in 0º
+      //cout << "Angles: " << euler[0]-M_PI << ", " << euler[1]-M_PI << ", " << yaw+M_PI/2 << endl;
       // transform to quaternion
-      Eigen::Quaternionf q(m);
+      Eigen::Quaternionf quaternion(m);
       // Initializaing pose
       geometry_msgs::PoseStamped pipe_data; 
       geometry_msgs::PoseStamped ekf_pipe_data; 
       // xi=fx*x/z+cx, yi=fy*y/z+cy
-      pipe_data.pose.position.x = (altitude/1000)*(pipe_center.x - mIntrinsic(0, 2)) / mIntrinsic(0, 0); // x=z*(xi-cx)/fx
-      pipe_data.pose.position.y = (altitude/1000)*(pipe_center.y - mIntrinsic(1, 2)) / mIntrinsic(1, 1); // y=z*(yi-cy)/fy
-      pipe_data.pose.position.z = altitude/1000;
+      pipe_data.pose.position.x = (altitude)*(pipe_center.x - mIntrinsic(0, 2)) / mIntrinsic(0, 0); // x=z*(xi-cx)/fx
+      pipe_data.pose.position.y = (altitude)*(pipe_center.y - mIntrinsic(1, 2)) / mIntrinsic(1, 1); // y=z*(yi-cy)/fy
+      pipe_data.pose.position.z = altitude;
       //pipe_data.pose.orientation.x = q.x();
       //pipe_data.pose.orientation.y = q.y();
       //pipe_data.pose.orientation.z = q.z() + 3.14159265/2;
       //pipe_data.pose.orientation.w = q.w();
       pipe_data.pose.orientation.x = 0;
       pipe_data.pose.orientation.y = 0;
-      pipe_data.pose.orientation.z = yaw + M_PI/2;
+      pipe_data.pose.orientation.z = yaw + 3.14159265/2;
       pipe_data.pose.orientation.w = 0;
-      pipe_data.header.stamp = ros::Time::now();
 
       // For Kalman filter
       ekf_pipe_data.pose.position.x = pipe_center.x;
       ekf_pipe_data.pose.position.y = pipe_center.y;
-      ekf_pipe_data.pose.position.z = altitude/1000;
-      ekf_pipe_data.pose.orientation.x = q.x();
-      ekf_pipe_data.pose.orientation.y = q.y();
-      ekf_pipe_data.pose.orientation.z = q.z();
-      ekf_pipe_data.pose.orientation.w = q.w();
-      ekf_pipe_data.header.stamp = ros::Time::now();
+      ekf_pipe_data.pose.position.z = altitude;
+      ekf_pipe_data.pose.orientation.x = quaternion.x();
+      ekf_pipe_data.pose.orientation.y = quaternion.y();
+      ekf_pipe_data.pose.orientation.z = quaternion.z();
+      ekf_pipe_data.pose.orientation.w = quaternion.w();
 
       pipe_pub_.publish(pipe_data);
       ekf_pub_.publish(ekf_pipe_data);
       //float altitude = pipe_data.pose.position.z;
     }
     imshow("output1", src);
-    //imshow("output2", gray);
-    //imshow("output3", bw);
+    imshow("output2", gray);
+    imshow("output3", bw);
     t3 = clock();
     double time1 = (double(t1 - t0) / CLOCKS_PER_SEC);
     //cout << "Execution Time Bovil: " << time1 << endl;
@@ -309,11 +338,15 @@ public:
   Eigen::Matrix<float, 3, 3> mIntrinsic;
 };
 
-int main(int argc, char **argv)
+int main(int _argc, char** _argv)
 {
-  ros::init(argc, argv, "pipe_detection");
-  ros::NodeHandle n("~");
-  ImageProcessor im(n);
-  ros::spin();
-  return 0;
+
+    // INIT THREADS
+    ros::init(_argc, _argv, "pipe_detection");
+    //cout << "pipe_detection initialized" << endl;
+    ros::NodeHandle n("~");
+    ImageProcessor im(n);
+
+    ros::spin();
+     return 0;
 }

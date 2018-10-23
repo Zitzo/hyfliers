@@ -41,7 +41,7 @@ void Callback(const geometry_msgs::PoseStamped &msg)
 {
 	linx = msg.pose.position.x;
 	liny = msg.pose.position.y;
-	//linz = msg.pose.position.z;
+	linz = msg.pose.position.z;
 	angZ = msg.pose.orientation.z;
 	lastPoseTime = ros::Time::now();
 }
@@ -55,10 +55,6 @@ void Callback_ekf(const geometry_msgs::PoseStamped &msg)
 	
 }
 
-void IMUCallback(const geometry_msgs::PoseStamped::ConstPtr& imu) 
-{ 
-  linz = imu->pose.position.z; // Comment if use of depth image
-} 
 
 geometry_msgs::TwistStamped command_vel(float _ux, float _uy, float _uz, float _ax, float _ay, float _az)
 {
@@ -147,7 +143,7 @@ int main(int _argc, char **_argv)
 	ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 5);
 	ros::Publisher ref_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 5);
 	//ros::Subscriber alt_sub = nh.subscribe("/mavros/local_position/pose", 10, IMUCallback);  //real
-	ros::Subscriber alt_sub = nh.subscribe("/uav_1/mavros/local_position/pose", 10, IMUCallback); // simulation
+	//ros::Subscriber alt_sub = nh.subscribe("/uav_1/mavros/local_position/pose", 10, IMUCallback); // simulation
 
 	std_msgs::Empty emp_msg;
 	geometry_msgs::TwistStamped constant_cmd_vel;
@@ -180,8 +176,8 @@ int main(int _argc, char **_argv)
 	auto t0 = chrono::steady_clock::now();
 	grvc::ual::Waypoint home;   // It should go there if it loose the pipe
 	home.header.frame_id = "map";
-	home.pose.position.x = -5;
-	home.pose.position.y = -5;
+	home.pose.position.x = 0;
+	home.pose.position.y = 0;
 	home.pose.position.z = 3;
 	home.pose.orientation.x = 0;
 	home.pose.orientation.y = 0;
@@ -190,7 +186,7 @@ int main(int _argc, char **_argv)
 
 	grvc::ual::Waypoint waypoint;  // Position on the pipe 
 	waypoint.header.frame_id = "map";
-	waypoint.pose.position.x = 0;
+	waypoint.pose.position.x = 1;
 	waypoint.pose.position.y = 0;
 	waypoint.pose.position.z = 4;
 	waypoint.pose.orientation.x = 0;
@@ -234,14 +230,14 @@ int main(int _argc, char **_argv)
 		}
 		else if (state == 2) // GoToWaypoint mode
 		{
-			security= 0;
+			security= 1;
 			std::cout << "Going to waypoint at " << waypoint.pose.position.x << "," << waypoint.pose.position.y << "," << waypoint.pose.position.z << "," << std::endl;
 			ual.goToWaypoint(waypoint);
 			std::cout << "Arrived!" << std::endl;
 			stateMutex.lock();
-			state = 3;
+			state = 0;
 			stateMutex.unlock();
-			std::cout << "Changed state to control mode" << std::endl;
+			std::cout << "Changed state to repose mode" << std::endl;
 		}
 		else if (state == 3) // Control mode
 		{
