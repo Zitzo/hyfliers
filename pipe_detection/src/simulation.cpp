@@ -150,14 +150,14 @@ public:
     img_pub_ = it_.advertise("/output_image", 1);
     pipe_pub_ = n.advertise<geometry_msgs::PoseStamped>("/pipe_pose", 1000);
     ekf_pub_ = n.advertise<geometry_msgs::PoseStamped>("/ekf/pipe_pose", 1);
-    alt_sub_ = n.subscribe("/uav_1/mavros/local_position/pose", 1000, IMUCallback); //simulation
-    //alt_sub_ = n.subscribe("/mavros/local_position/pose", 1000, IMUCallback);   //real
+    //alt_sub_ = n.subscribe("/uav_1/mavros/local_position/pose", 1000, IMUCallback); //simulation
+    alt_sub_ = n.subscribe("/mavros/local_position/pose", 1000, IMUCallback);   //real
 
     //pipe_pub_ = n.advertise<geometry_msgs::Twist>("/pipe_pose", 1000);
 
     // Camera intrinsics
-    mIntrinsic << 674.3157444517138, 0.0, 400.5, // Parrot intrinsic parameters
-        0.0, 674.3157444517138, 300.5,
+    mIntrinsic << 608.720764, 0.0, 322.238342, // Parrot intrinsic parameters
+        0.0, 608.529724, 241.967377,
         0.0, 0.0, 1.0;
   }
 
@@ -219,10 +219,10 @@ public:
     //grey pipe detection
     rgbd::ColorClusterSpace *ccs = rgbd::createSingleClusteredSpace(
         0, 180,
-        0, 150,
-        0, 150,
-        //60, 70,   // simulation or real
-        //130, 150,
+        //0, 150,
+        //0, 150,
+        60, 70,   // simulation or real
+        130, 150,
         180, 255, 255,
         32);
 

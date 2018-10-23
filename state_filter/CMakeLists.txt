@@ -17,14 +17,14 @@ find_package(catkin REQUIRED COMPONENTS
  				nav_msgs
  				std_msgs
  				roscpp 
-
-				rgbd_tools
 )
+
+find_package(rgbd_tools REQUIRED)
 
 find_package(OpenCV 3 REQUIRED)
 
 catkin_package(
-  CATKIN_DEPENDS uav_abstraction_layer image_transport cv_bridge argument_parser geometry_msgs nav_msgs std_msgs roscpp  rgbd_tools
+  CATKIN_DEPENDS uav_abstraction_layer image_transport cv_bridge argument_parser geometry_msgs nav_msgs std_msgs roscpp 
 )
 
 ## System dependencies are found with CMake's conventions
@@ -212,5 +212,5 @@ add_executable(state_filter src/main.cpp src/StateFilter.h src/StateFilter.inl)
 target_include_directories(state_filter PUBLIC ${catkin_INCLUDE_DIRS})
 target_include_directories(state_filter PUBLIC ${OpenCV_INCLUDE_DIRS})
 
-target_link_libraries(state_filter ${catkin_LIBRARIES} rgbd_tools)
+target_link_libraries(state_filter ${catkin_LIBRARIES} rgbd_tools::rgbd_tools)
 target_link_libraries(state_filter ${OpenCV_LIBRARIES} )

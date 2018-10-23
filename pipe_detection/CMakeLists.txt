@@ -14,18 +14,24 @@ find_package(catkin REQUIRED COMPONENTS
 				image_transport
   				argument_parser 
  				geometry_msgs 
- 				nav_msgs
  				std_msgs
  				roscpp 
-
-				rgbd_tools
+				
 )
 
 find_package(OpenCV 3 REQUIRED)
 
+find_package(rgbd_tools REQUIRED)
+
 catkin_package(
-  CATKIN_DEPENDS uav_abstraction_layer image_transport cv_bridge argument_parser geometry_msgs nav_msgs std_msgs roscpp  rgbd_tools
-)
+  CATKIN_DEPENDS uav_abstraction_layer
+				cv_bridge
+				image_transport
+  				argument_parser 
+ 				geometry_msgs 
+ 				std_msgs
+ 				roscpp 
+				)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -225,9 +231,9 @@ target_include_directories(depth PUBLIC ${OpenCV_INCLUDE_DIRS})
 
 #target_link_libraries(imagen ${catkin_LIBRARIES} rgbd_tools)
 #target_link_libraries(imagen ${OpenCV_LIBRARIES} )
-target_link_libraries(pipe_detection ${catkin_LIBRARIES} rgbd_tools)
+target_link_libraries(pipe_detection ${catkin_LIBRARIES} rgbd_tools::rgbd_tools)
 target_link_libraries(pipe_detection ${OpenCV_LIBRARIES} )
-target_link_libraries(simulator ${catkin_LIBRARIES} rgbd_tools)
+target_link_libraries(simulator ${catkin_LIBRARIES} rgbd_tools::rgbd_tools)
 target_link_libraries(simulator ${OpenCV_LIBRARIES} )
-target_link_libraries(depth ${catkin_LIBRARIES} rgbd_tools)
+target_link_libraries(depth ${catkin_LIBRARIES} rgbd_tools::rgbd_tools)
 target_link_libraries(depth ${OpenCV_LIBRARIES} )

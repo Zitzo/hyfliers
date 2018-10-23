@@ -160,8 +160,8 @@ public:
     //pipe_pub_ = n.advertise<geometry_msgs::Twist>("/pipe_pose", 1000);
 
     // Camera intrinsics
-    mIntrinsic << 674.3157444517138, 0.0, 400.5, // Parrot intrinsic parameters
-        0.0, 674.3157444517138, 300.5,
+    mIntrinsic << 608.720764, 0.0, 322.238342, // Parrot intrinsic parameters
+        0.0, 608.529724, 241.967377,
         0.0, 0.0, 1.0;
   }
 
