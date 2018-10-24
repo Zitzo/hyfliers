@@ -243,6 +243,19 @@ public:
        180, 255, 255,
        32);
 
+      //  auto segmentationRGB = [](char *_a, char *_b, char *_c)->int{
+      //     if(_a < 50  && _b < 50 && :c < 50){
+      //       return 1;
+      //     }else{
+      //       return 0;
+      //     }
+      //  };
+// rgbd::ColorClusterSpace *ccs = rgbd::createSingleSparseCluster(
+//        {std::pair<unsigned char, unsigned char>(0,45),std::pair<unsigned char, unsigned char>(75,180)},
+//        {std::pair<unsigned char, unsigned char>(15, 30)},
+//        {std::pair<unsigned char, unsigned char>(30, 50)},
+//        180, 100, 100,
+//        10);
     rgbd::ColorClustering<uchar>(dst.data,
                                  dst.cols,
                                  dst.rows,
