@@ -156,8 +156,8 @@ int main(int _argc, char **_argv)
 		sleep(1);
 	}
 
-	PID px(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
-	PID py(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
+	PID px(1, 0.00, 0.0, -0.5, 0.5, -20, 20);
+	PID py(1, 0.00, 0.0, -0.5, 0.5, -20, 20);
 	PID pz(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
 	PID gz(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
 
@@ -171,25 +171,12 @@ int main(int _argc, char **_argv)
 	pz.enableRosInterface("/mav_controller/pid_z");
 
 	auto t0 = chrono::steady_clock::now();
-	grvc::ual::Waypoint home;   // It should go there if it loose the pipe
-	home.header.frame_id = "map";
-	home.pose.position.x = 0;
-	home.pose.position.y = 0;
-	home.pose.position.z = 3;
-	home.pose.orientation.x = 0;
-	home.pose.orientation.y = 0;
-	home.pose.orientation.z = 0;
-	home.pose.orientation.w = 1;
+	grvc::ual::Waypoint home = ual.pose();   // It should go there if it loose the pipe
 
-	grvc::ual::Waypoint waypoint;  // Position on the pipe 
-	waypoint.header.frame_id = "map";
-	waypoint.pose.position.x = 1;
-	waypoint.pose.position.y = 0;
-	waypoint.pose.position.z = 4;
-	waypoint.pose.orientation.x = 0;
-	waypoint.pose.orientation.y = 0;
-	waypoint.pose.orientation.z = 0;
-	waypoint.pose.orientation.w = 1;
+	grvc::ual::Waypoint waypoint = ual.pose();  // Position on the pipe 
+	waypoint.pose.position.x += 1;
+	waypoint.pose.position.z += 4;
+
 	bool run = true;
 
 	std::cout << "No mode selected, select mode 0-8" << std::endl;
@@ -275,7 +262,7 @@ int main(int _argc, char **_argv)
 				msgref.pose.position.x = px.reference();
 				msgref.pose.position.z = pz.reference();
 				msgref.pose.position.y = py.reference();
-				msgref.pose.orientation.x = gz.reference();
+				//msgref.pose.orientation.x = gz.reference();
 
 				geometry_msgs::PoseStamped msgpos;
 
@@ -376,13 +363,13 @@ int main(int _argc, char **_argv)
 				std::cout << "Changing waypoint value";
 				std::cout << "X value of waypoint: ";
 			    std::cin >> wp_value;
-				waypoint.pose.position.x = wp_value;
+				waypoint.pose.position.x += wp_value;
 				std::cout << "Y value of waypoint: ";
 			    std::cin >> wp_value;
-				waypoint.pose.position.y = wp_value;
+				waypoint.pose.position.y += wp_value;
 				std::cout << "Z value of waypoint: ";
 			    std::cin >> wp_value;
-				waypoint.pose.position.z = wp_value;
+				waypoint.pose.position.z += wp_value;
 				std::cout << "Changing to control mode" << std::endl;
 				stateMutex.lock();
 				state = 3;

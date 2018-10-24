@@ -19,6 +19,8 @@
 #include <Eigen/Geometry> 
 #include <geometry_msgs/PoseStamped.h>
 #include <cstddef>
+#include <sensor_msgs/image_encodings.h>
+#include <cv_bridge/cv_bridge.h>
 //#include <tf/transform_broadcaster.h>
 //#include <uav_abstraction_layer/ual.h>
 
@@ -135,9 +137,12 @@ class ImageProcessor
   image_transport::ImageTransport it_;
   image_transport::Subscriber img_sub_;
   image_transport::Publisher img_pub_;
+  image_transport::Publisher img_pub2_;
   ros::Publisher pipe_pub_;
   ros::Publisher ekf_pub_;
   ros::Subscriber alt_sub_;
+  ros::Publisher detector_pub;
+  //cv_bridge::CvImage cv_image;
   // tf::TransformBroadcaster tf_br_;
 public:
   ImageProcessor(ros::NodeHandle &n) : nh_(n),
@@ -148,10 +153,12 @@ public:
     //img_sub_ = it_.subscribe("/camera/image", 1, &ImageProcessor::image_callback, this);  // old real
    // sub_alt_ = n.subscribe("/ardrone/navdata", 1000, altitude_Callback);
     img_pub_ = it_.advertise("/output_image", 1);
+    img_pub2_ = it_.advertise("/image_detector", 1);
     pipe_pub_ = n.advertise<geometry_msgs::PoseStamped>("/pipe_pose", 1000);
     ekf_pub_ = n.advertise<geometry_msgs::PoseStamped>("/ekf/pipe_pose", 1);
     //alt_sub_ = n.subscribe("/uav_1/mavros/local_position/pose", 1000, IMUCallback); //simulation
     alt_sub_ = n.subscribe("/mavros/local_position/pose", 1000, IMUCallback);   //real
+    detector_pub = n.advertise<sensor_msgs::Image>("/Detector_Image",1);
 
     //pipe_pub_ = n.advertise<geometry_msgs::Twist>("/pipe_pose", 1000);
 
@@ -192,7 +199,7 @@ public:
 
     cv::Mat src = cv_ptr->image;
     //cv::Mat img = cv::imread("/home/alejandro/pipe_detection/src/pipe_detection/src/out28.jpg", CV_LOAD_IMAGE_COLOR);
-    // cv::waitkey(30);
+    //cv::waitkey(30);
     // sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", img).toImageMsg();
 
     // Do something with img and store the result in send
@@ -217,29 +224,29 @@ public:
     // BOViL::ColorClusterSpace *ccs = BOViL::CreateHSVCS_8c(255,255,255);
 
     //grey pipe detection
-    rgbd::ColorClusterSpace *ccs = rgbd::createSingleClusteredSpace(
-        0, 180,
-        //0, 150,
-        //0, 150,
-        20, 70,   // simulation or real
-        130, 255,
-        180, 255, 255,
-        32);
+    // rgbd::ColorClusterSpace *ccs = rgbd::createSingleClusteredSpace(
+    //     0, 180,
+    //     //0, 150,
+    //     //0, 150,
+    //     20, 70,   // simulation or real
+    //     130, 255,
+    //     180, 255, 255,
+    //     32);
 
 
 
     // Red cardboard detection
-   // rgbd::ColorClusterSpace *ccs = rgbd::createSingleSparseCluster(
-   //     {std::pair<unsigned char, unsigned char>(0,30),std::pair<unsigned char, unsigned char>(140,180)},
-   //     {std::pair<unsigned char, unsigned char>(50, 255)},
-   //     {std::pair<unsigned char, unsigned char>(50, 255)},
-   //     180, 255, 255,
-   //     32);
+   rgbd::ColorClusterSpace *ccs = rgbd::createSingleSparseCluster(
+       {std::pair<unsigned char, unsigned char>(0,45),std::pair<unsigned char, unsigned char>(75,180)},
+       {std::pair<unsigned char, unsigned char>(50, 70)},
+       {std::pair<unsigned char, unsigned char>(120, 220)},
+       180, 255, 255,
+       32);
 
     rgbd::ColorClustering<uchar>(dst.data,
                                  dst.cols,
                                  dst.rows,
-                                 5000,  // minimun number of pixels detected
+                                 10000,  // minimun number of pixels detected
                                  objects,
                                  *ccs);
 
@@ -254,9 +261,9 @@ public:
           ob.height());
       cv::rectangle(display, bb, cv::Scalar(0, 255, 0), 2);
     }
-    imshow(window_name, dst);
-    imshow(window_name + "_res", display);
-    cv::waitKey(3);
+    //imshow(window_name, dst);
+    //imshow(window_name + "_res", display);
+    //cv::waitKey(3);
 
     //Publish image
     cv_bridge::CvImage send(cv_ptr->header, cv_ptr->encoding, dst);
@@ -324,9 +331,14 @@ public:
       ekf_pub_.publish(ekf_pipe_data);
       //float altitude = pipe_data.pose.position.z;
     }
-    imshow("output1", src);
-    imshow("output2", gray);
-    imshow("output3", bw);
+    //imshow("output1", src);
+    //imshow("output2", gray);
+    //imshow("output3", bw);
+    // cv_image.image = src;
+    // cv_image.enconding = cv_ptr->encoding;
+    //cv::cvtColor(src, dst, CV_BGR2HSV);
+    cv_bridge::CvImage send_src(cv_ptr->header, cv_ptr->encoding, src);
+    img_pub2_.publish(send_src.toImageMsg());
     t3 = clock();
     double time1 = (double(t1 - t0) / CLOCKS_PER_SEC);
     //cout << "Execution Time Bovil: " << time1 << endl;

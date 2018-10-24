@@ -21,15 +21,8 @@ int main(int _argc, char **_argv)
 
 	ual.takeOff(flight_level);
 
-    grvc::ual::Waypoint waypoint;
-	waypoint.header.frame_id = "map";
-	waypoint.pose.position.x = 1;
-	waypoint.pose.position.y = 0;
-	waypoint.pose.position.z = 4;
-	waypoint.pose.orientation.x = 0;
-	waypoint.pose.orientation.y = 0;
-	waypoint.pose.orientation.z = 0;
-	waypoint.pose.orientation.w = 1;
+    grvc::ual::Waypoint waypoint = ual.pose();
+	waypoint.pose.position.y +=2;
 
     ual.goToWaypoint(waypoint);
     std::cout << "Arrived!" << std::endl;
