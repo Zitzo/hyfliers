@@ -21,9 +21,10 @@
 #include <cstddef>
 #include <sensor_msgs/image_encodings.h>
 #include <cv_bridge/cv_bridge.h>
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
 //#include <tf/transform_broadcaster.h>
 //#include <uav_abstraction_layer/ual.h>
-
 
 using namespace std;
 using namespace cv;
@@ -152,7 +153,7 @@ public:
     img_sub_ = it_.subscribe("/camera/color/image_raw", 1, &ImageProcessor::image_callback, this);  //real
     //img_sub_ = it_.subscribe("/camera/image", 1, &ImageProcessor::image_callback, this);  // old real
    // sub_alt_ = n.subscribe("/ardrone/navdata", 1000, altitude_Callback);
-    img_pub_ = it_.advertise("/output_image", 1);
+    img_pub_ = it_.advertise("/output_image_bw", 1);
     img_pub2_ = it_.advertise("/image_detector", 1);
     pipe_pub_ = n.advertise<geometry_msgs::PoseStamped>("/pipe_pose", 1000);
     ekf_pub_ = n.advertise<geometry_msgs::PoseStamped>("/ekf/pipe_pose", 1);
@@ -224,44 +225,194 @@ public:
     // BOViL::ColorClusterSpace *ccs = BOViL::CreateHSVCS_8c(255,255,255);
 
     //grey pipe detection
-    // rgbd::ColorClusterSpace *ccs = rgbd::createSingleClusteredSpace(
-    //     0, 180,
-    //     //0, 150,
-    //     //0, 150,
-    //     20, 70,   // simulation or real
-    //     130, 255,
-    //     180, 255, 255,
-    //     32);
+    rgbd::ColorClusterSpace *ccs = rgbd::createSingleClusteredSpace(
+        80, 180,
+        //0, 150,
+        //0, 150,
+        95, 204,   // simulation or real
+        90, 235,
+        180, 255, 255,
+        32);
 
 
 
     // Red cardboard detection
-   rgbd::ColorClusterSpace *ccs = rgbd::createSingleSparseCluster(
-       {std::pair<unsigned char, unsigned char>(0,45),std::pair<unsigned char, unsigned char>(75,180)},
-       {std::pair<unsigned char, unsigned char>(50, 70)},
-       {std::pair<unsigned char, unsigned char>(120, 220)},
-       180, 255, 255,
-       32);
+  //  rgbd::ColorClusterSpace *ccs = rgbd::createSingleSparseCluster(
+  //      {std::pair<unsigned char, unsigned char>(0,45),std::pair<unsigned char, unsigned char>(75,180)},
+  //      {std::pair<unsigned char, unsigned char>(50, 70)},
+  //      {std::pair<unsigned char, unsigned char>(120, 220)},
+  //      180, 255, 255,
+  //      32);
 
-      //  auto segmentationRGB = [](char *_a, char *_b, char *_c)->int{
-      //     if(_a < 50  && _b < 50 && :c < 50){
-      //       return 1;
-      //     }else{
+      //  auto segmentationBGR = [](unsigned char *_a, unsigned char *_b, unsigned char *_c)->int{
+      //     if( *_a > 160 && *_b > 90 && *_c < 100){
       //       return 0;
       //     }
+      //     else
+      //     {
+      //       return 1;
+      //     }
       //  };
-// rgbd::ColorClusterSpace *ccs = rgbd::createSingleSparseCluster(
-//        {std::pair<unsigned char, unsigned char>(0,45),std::pair<unsigned char, unsigned char>(75,180)},
-//        {std::pair<unsigned char, unsigned char>(15, 30)},
-//        {std::pair<unsigned char, unsigned char>(30, 50)},
-//        180, 100, 100,
-//        10);
+
     rgbd::ColorClustering<uchar>(dst.data,
                                  dst.cols,
                                  dst.rows,
                                  10000,  // minimun number of pixels detected
                                  objects,
                                  *ccs);
+
+
+
+    ///////////////////////////////////////////////////////////  Meanshift filtering
+
+   Mat res;
+   
+   GaussianBlur(src, src, Size(5,5), 2, 2);
+   pyrMeanShiftFiltering( src, res, 3, 45, 3);
+   //imwrite("meanshift.png", res);
+   imshow( "Meanshift", res );
+
+
+    ///////////////////////////////////////////////////////////////  Kmeans 
+  Mat samples(res.rows * res.cols, 3, CV_32F);
+  for( int y = 0; y < res.rows; y++ )
+    for( int x = 0; x < res.cols; x++ )
+      for( int z = 0; z < 3; z++)
+        samples.at<float>(y + x*res.rows, z) = res.at<Vec3b>(y,x)[z];
+
+
+  int clusterCount = 6;
+  Mat labels;
+  int attempts = 1;
+  Mat centers;
+  kmeans(samples, clusterCount, labels, TermCriteria(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS, 100, 0.01), attempts, KMEANS_PP_CENTERS, centers );
+
+
+  Mat new_image( res.size(), res.type() );
+  for( int y = 0; y < res.rows; y++ )
+    for( int x = 0; x < res.cols; x++ )
+    { 
+      int cluster_idx = labels.at<int>(y + x*res.rows,0);
+      new_image.at<Vec3b>(y,x)[0] = centers.at<float>(cluster_idx, 0);
+      new_image.at<Vec3b>(y,x)[1] = centers.at<float>(cluster_idx, 1);
+      new_image.at<Vec3b>(y,x)[2] = centers.at<float>(cluster_idx, 2);
+    }
+  imshow( "clustered image", new_image );
+
+    ////////////////////////////////////////////////////////////// Hough; CANNY
+
+      Mat blackInBlack, dst2, cdst2;
+  // blackInBlack = cv::Mat(480, 640,CV_8UC3, cv::Scalar(0,0,0));
+  Canny(new_image, dst2, 150, 450, 3);
+   cvtColor(dst2, cdst2, CV_GRAY2BGR);
+
+  vector<Vec4i> lines;
+  HoughLinesP(dst2, lines, 1, CV_PI/180, 50, 50, 10 );
+  for( size_t i = 0; i < lines.size(); i++ )
+  {
+    Vec4i l = lines[i];
+    line( cdst2, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 3, CV_AA);
+  }
+
+ //imshow("source", src);
+  imshow("canny", dst2);
+  imshow("detected lines", cdst2);
+
+    ////////////////////////////////////////////////////////// Fill and Draw contours
+
+    vector<vector<Point> > contours2;
+    vector<Vec4i> hierarchy2;
+    Mat drawing;
+
+    ////////// Completing contours
+
+    int flag2 = 0;
+    for( int y = 0; y < dst2.cols; y++ )
+    { 
+     int x = 0;
+    if (dst2.at<uchar>(x,y) == 255)
+      flag2 = 1;
+    }
+    if (flag2 == 1)
+    {
+    for( int y = 1; y < dst2.cols-1; y++ )
+      { 
+        int x = 0;
+        dst2.at<uchar>(x,y) = 255;
+      }
+    }
+
+
+     flag2 = 0;
+    for( int x = 0; x < dst2.rows; x++ )
+    { 
+     int y = dst2.cols-1;
+
+    if (dst2.at<uchar>(x,y) == 255)
+      flag2 = 1;
+    }
+
+      if (flag2 == 1)
+       {
+      for( int x = 1; x < dst2.rows-1; x++ )
+       { 
+        int y = dst2.cols-1;
+        dst2.at<uchar>(x,y) = 255;
+       }
+        }
+
+    flag2 = 0;
+    for( int y = 0; y < dst2.cols; y++ )
+    { 
+    int x = dst2.rows-1;
+
+    if (dst2.at<uchar>(x,y) == 255)
+      flag2 = 1;
+    }
+
+    if (flag2 == 1)
+       {
+      for( int y = 1; y < dst2.cols-1; y++ )
+       { 
+        int x = dst2.rows-1;
+        dst2.at<uchar>(x,y) = 255;
+       }
+        }
+
+    flag2 = 0;
+    for( int x = 0; x < dst2.rows; x++ )
+    { 
+     int y = 0;
+
+    if (dst2.at<uchar>(x,y) == 255)
+      flag2 = 1;
+    }
+
+     if (flag2 == 1)
+       {
+      for( int x = 1; x < dst2.rows-1; x++ )
+          { 
+             int y = 0;
+             dst2.at<uchar>(x,y) = 255;
+          }
+        }
+
+////////////////
+
+    cv::dilate(dst2, dst2, cv::Mat(), cv::Point(-1,-1));
+
+    findContours( dst2, contours2, hierarchy2, RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+    drawing = Mat::zeros( dst2.size(), CV_8UC3 );
+
+    vector<Point> approxShape;
+    for(size_t i = 0; i < contours2.size(); i++)
+    {
+        approxPolyDP(contours2[i], approxShape, arcLength(Mat(contours2[i]), true)*0.04, true);
+        drawContours(drawing, contours2, i, Scalar(255, 255, 255), CV_FILLED);   // fill White
+    }
+
+  imshow("Fill contours", drawing);
+    /////////////////////////////////////////////////////////
 
     cv::cvtColor(dst, dst, CV_HSV2BGR);
     cv::Mat display = src.clone();
@@ -276,16 +427,18 @@ public:
     }
     //imshow(window_name, dst);
     //imshow(window_name + "_res", display);
-    //cv::waitKey(3);
+    cv::waitKey(3);
 
     //Publish image
     cv_bridge::CvImage send(cv_ptr->header, cv_ptr->encoding, dst);
+    //cv_bridge::CvImage send(cv_ptr->header, cv_ptr->encoding, src);
     img_pub_.publish(send.toImageMsg());
     t1 = clock();
     /////////// PCA
     t2 = clock();
     Mat gray;
     cvtColor(dst, gray, COLOR_BGR2GRAY);
+    //cvtColor(src, gray, COLOR_BGR2GRAY);
     // Convert image to binary
     Mat bw;
     threshold(gray, bw, 50, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
@@ -353,9 +506,9 @@ public:
     cv_bridge::CvImage send_src(cv_ptr->header, cv_ptr->encoding, src);
     img_pub2_.publish(send_src.toImageMsg());
     t3 = clock();
-    double time1 = (double(t1 - t0) / CLOCKS_PER_SEC);
+   // double time1 = (double(t1 - t0) / CLOCKS_PER_SEC);
     //cout << "Execution Time Bovil: " << time1 << endl;
-    double time2 = (double(t3 - t2) / CLOCKS_PER_SEC);
+    //double time2 = (double(t3 - t2) / CLOCKS_PER_SEC);
     //cout << "Execution Time PCA: " << time2 << endl;
   }
 
