@@ -219,20 +219,20 @@ public:
 
     /// Using Canny's output as a mask, we display our result
     // dst = Scalar::all(0);
-    cv::cvtColor(src, dst, CV_BGR2HSV);
+    // cv::cvtColor(src, dst, CV_BGR2HSV);
     // src.copyTo( dst, detected_edges);
     std::vector<rgbd::ImageObject> objects;
     // BOViL::ColorClusterSpace *ccs = BOViL::CreateHSVCS_8c(255,255,255);
 
-    //grey pipe detection
-    rgbd::ColorClusterSpace *ccs = rgbd::createSingleClusteredSpace(
-        80, 180,
-        //0, 150,
-        //0, 150,
-        95, 204,   // simulation or real
-        90, 235,
-        180, 255, 255,
-        32);
+    // //grey pipe detection
+    // rgbd::ColorClusterSpace *ccs = rgbd::createSingleClusteredSpace(
+    //     0, 180,
+    //     //0, 150,
+    //     //0, 150,
+    //     20, 255,   // simulation or real
+    //     30, 255,
+    //     180, 255, 255,
+    //     32);
 
 
 
@@ -254,12 +254,12 @@ public:
       //     }
       //  };
 
-    rgbd::ColorClustering<uchar>(dst.data,
-                                 dst.cols,
-                                 dst.rows,
-                                 10000,  // minimun number of pixels detected
-                                 objects,
-                                 *ccs);
+    // rgbd::ColorClustering<uchar>(dst.data,
+    //                              dst.cols,
+    //                              dst.rows,
+    //                              10000,  // minimun number of pixels detected
+    //                              objects,
+    //                              *ccs);
 
 
 
@@ -299,6 +299,26 @@ public:
     }
   imshow( "clustered image", new_image );
 
+  ////////////////////////////////////////////////////////////////////////////// HSV
+
+    cv::cvtColor(new_image, dst, CV_BGR2HSV);
+
+      // eliminate shadows and to burned parts
+    rgbd::ColorClusterSpace *ccs = rgbd::createSingleClusteredSpace(
+        0, 180,
+        30, 255, 
+        50, 255,
+        180, 255, 255,
+        32);
+
+
+    rgbd::ColorClustering<uchar>(dst.data,
+                                 dst.cols,
+                                 dst.rows,
+                                 5000,  // minimun number of pixels detected
+                                 objects,
+                                 *ccs);
+
     ////////////////////////////////////////////////////////////// Hough; CANNY
 
       Mat blackInBlack, dst2, cdst2;
@@ -316,7 +336,7 @@ public:
 
  //imshow("source", src);
   imshow("canny", dst2);
-  imshow("detected lines", cdst2);
+  // imshow("detected lines", cdst2);
 
     ////////////////////////////////////////////////////////// Fill and Draw contours
 
@@ -442,10 +462,32 @@ public:
     // Convert image to binary
     Mat bw;
     threshold(gray, bw, 50, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+
+    imshow("BW", bw);
+
+    ////////////////////////////////////////////////////// Combine of HSV and rest
+    Mat combined_image( bw.size(), bw.type() );
+    for( int y = 0; y < bw.rows; y++ )
+    {
+      for( int x = 0; x < bw.cols; x++ )
+      {
+        if (bw.at<uchar>(y,x) == 255 && drawing.at<Vec3b>(y,x)[0] == 255)
+          combined_image.at<uchar>(y,x) = 255;
+        else
+          combined_image.at<uchar>(y,x) = 0;
+      }
+    }
+    cv::erode(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 3);
+    cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 2);
+
+    imshow("Combined image", combined_image);
+
+    ///////////////////////////////////////////////////////////
+
     // Find all the contours in the thresholded image
     vector<Vec4i> hierarchy;
     vector<vector<Point>> contours;
-    findContours(bw, contours, hierarchy, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+    findContours(combined_image, contours, hierarchy, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
     for (size_t i = 0; i < contours.size(); ++i)
     {
       // Calculate the area of each contour
@@ -497,7 +539,7 @@ public:
       ekf_pub_.publish(ekf_pipe_data);
       //float altitude = pipe_data.pose.position.z;
     }
-    //imshow("output1", src);
+    imshow("output1", src);
     //imshow("output2", gray);
     //imshow("output3", bw);
     // cv_image.image = src;
