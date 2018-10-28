@@ -306,7 +306,7 @@ public:
       // eliminate shadows and to burned parts
     rgbd::ColorClusterSpace *ccs = rgbd::createSingleClusteredSpace(
         0, 180,
-        30, 255, 
+        50, 255, 
         50, 255,
         180, 255, 255,
         32);
@@ -324,21 +324,22 @@ public:
       Mat blackInBlack, dst2, cdst2;
   // blackInBlack = cv::Mat(480, 640,CV_8UC3, cv::Scalar(0,0,0));
   Canny(new_image, dst2, 150, 450, 3);
-   cvtColor(dst2, cdst2, CV_GRAY2BGR);
+  //  cvtColor(dst2, cdst2, CV_GRAY2BGR);
 
-  vector<Vec4i> lines;
-  HoughLinesP(dst2, lines, 1, CV_PI/180, 50, 50, 10 );
-  for( size_t i = 0; i < lines.size(); i++ )
-  {
-    Vec4i l = lines[i];
-    line( cdst2, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 3, CV_AA);
-  }
+  // vector<Vec4i> lines;
+  // HoughLinesP(dst2, lines, 1, CV_PI/180, 50, 50, 10 );
+  // for( size_t i = 0; i < lines.size(); i++ )
+  // {
+  //   Vec4i l = lines[i];
+  //   line( cdst2, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 3, CV_AA);
+  // }
 
  //imshow("source", src);
   imshow("canny", dst2);
   // imshow("detected lines", cdst2);
 
     ////////////////////////////////////////////////////////// Fill and Draw contours
+
 
     vector<vector<Point> > contours2;
     vector<Vec4i> hierarchy2;
@@ -419,7 +420,7 @@ public:
 
 ////////////////
 
-    cv::dilate(dst2, dst2, cv::Mat(), cv::Point(-1,-1));
+    cv::dilate(dst2, dst2, cv::Mat(), cv::Point(-1,-1),1);
 
     findContours( dst2, contours2, hierarchy2, RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
     drawing = Mat::zeros( dst2.size(), CV_8UC3 );
@@ -430,6 +431,7 @@ public:
         approxPolyDP(contours2[i], approxShape, arcLength(Mat(contours2[i]), true)*0.04, true);
         drawContours(drawing, contours2, i, Scalar(255, 255, 255), CV_FILLED);   // fill White
     }
+
 
   imshow("Fill contours", drawing);
     /////////////////////////////////////////////////////////
@@ -477,10 +479,42 @@ public:
           combined_image.at<uchar>(y,x) = 0;
       }
     }
-    cv::erode(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 3);
-    cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 2);
+    cv::erode(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 4);
 
-    imshow("Combined image", combined_image);
+
+//     // Hough
+ 
+  vector<Vec4i> lines;
+  HoughLinesP(combined_image, lines, 1, CV_PI/180, 50, 50, 10 );
+
+  cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 6);
+
+   if(lines.empty())
+   {}
+   else
+   {
+    Vec4i l = lines[0];
+    for( int y = 0; y < bw.rows; y++ )
+    {
+      for( int x = 0; x < bw.cols; x++ )
+      {
+          if(new_image.at<Vec3b>(y,x)[0] == new_image.at<Vec3b>(Point(l[0],l[1]))[0] && new_image.at<Vec3b>(y,x)[1] == new_image.at<Vec3b>(Point(l[0],l[1]))[1] && new_image.at<Vec3b>(y,x)[2] == new_image.at<Vec3b>(Point(l[0],l[1]))[2])
+          combined_image.at<uchar>(y,x) = 255;
+          else if (new_image.at<Vec3b>(y,x)[0] == new_image.at<Vec3b>(Point(l[2],l[3]))[0] && new_image.at<Vec3b>(y,x)[1] == new_image.at<Vec3b>(Point(l[2],l[3]))[1] && new_image.at<Vec3b>(y,x)[2] == new_image.at<Vec3b>(Point(l[2],l[3]))[2])
+          combined_image.at<uchar>(y,x) = 255;
+          else
+          combined_image.at<uchar>(y,x) = 0;
+      }
+    }
+   }
+
+  imshow("Combined image", combined_image);
+    // imshow("Combined image", combined_image);
+
+
+    // //cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 2);
+
+    // imshow("Complete image", complete_image);
 
     ///////////////////////////////////////////////////////////
 
