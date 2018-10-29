@@ -265,12 +265,14 @@ public:
 
     ///////////////////////////////////////////////////////////  Meanshift filtering
 
-   Mat res;
+   Mat res, src2;
    
-   GaussianBlur(src, src, Size(5,5), 2, 2);
-   pyrMeanShiftFiltering( src, res, 3, 45, 3);
+  resize(src,src2,Size(),0.5,0.5,CV_INTER_AREA);
+
+   GaussianBlur(src2, src2, Size(5,5), 2, 2);
+   pyrMeanShiftFiltering( src2, res, 2, 45, 3);
    //imwrite("meanshift.png", res);
-   imshow( "Meanshift", res );
+    imshow( "Meanshift", res );
 
 
     ///////////////////////////////////////////////////////////////  Kmeans 
@@ -297,7 +299,7 @@ public:
       new_image.at<Vec3b>(y,x)[1] = centers.at<float>(cluster_idx, 1);
       new_image.at<Vec3b>(y,x)[2] = centers.at<float>(cluster_idx, 2);
     }
-  imshow( "clustered image", new_image );
+   imshow( "clustered image", new_image );
 
   ////////////////////////////////////////////////////////////////////////////// HSV
 
@@ -321,7 +323,7 @@ public:
 
     ////////////////////////////////////////////////////////////// Hough; CANNY
 
-      Mat blackInBlack, dst2, cdst2;
+      Mat dst2, cdst2;
   // blackInBlack = cv::Mat(480, 640,CV_8UC3, cv::Scalar(0,0,0));
   Canny(new_image, dst2, 150, 450, 3);
   //  cvtColor(dst2, cdst2, CV_GRAY2BGR);
@@ -334,9 +336,8 @@ public:
   //   line( cdst2, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 3, CV_AA);
   // }
 
- //imshow("source", src);
-  imshow("canny", dst2);
-  // imshow("detected lines", cdst2);
+ 
+   imshow("canny", dst2);
 
     ////////////////////////////////////////////////////////// Fill and Draw contours
 
@@ -433,11 +434,11 @@ public:
     }
 
 
-  imshow("Fill contours", drawing);
+   imshow("Fill contours", drawing);
     /////////////////////////////////////////////////////////
 
     cv::cvtColor(dst, dst, CV_HSV2BGR);
-    cv::Mat display = src.clone();
+    cv::Mat display = src2.clone();
     for (auto &ob : objects)
     {
       cv::Rect bb(
@@ -465,7 +466,7 @@ public:
     Mat bw;
     threshold(gray, bw, 50, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
 
-    imshow("BW", bw);
+     imshow("BW", bw);
 
     ////////////////////////////////////////////////////// Combine of HSV and rest
     Mat combined_image( bw.size(), bw.type() );
@@ -479,15 +480,15 @@ public:
           combined_image.at<uchar>(y,x) = 0;
       }
     }
-    cv::erode(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 4);
+    cv::erode(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 2);
 
 
-//     // Hough
+//// Hough
  
   vector<Vec4i> lines;
   HoughLinesP(combined_image, lines, 1, CV_PI/180, 50, 50, 10 );
 
-  cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 6);
+  cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 4);
 
    if(lines.empty())
    {}
@@ -508,13 +509,12 @@ public:
     }
    }
 
-  imshow("Combined image", combined_image);
-    // imshow("Combined image", combined_image);
+ imshow("Combined image", combined_image);
 
+  resize(combined_image,combined_image,Size(),2,2,CV_INTER_LANCZOS4);
 
     // //cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 2);
 
-    // imshow("Complete image", complete_image);
 
     ///////////////////////////////////////////////////////////
 
