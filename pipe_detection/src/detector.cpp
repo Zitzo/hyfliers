@@ -275,43 +275,43 @@ public:
 
    Mat res, src2;
    
-  resize(src,src2,Size(),0.5,0.5,CV_INTER_AREA);
+   resize(src,src2,Size(),0.5,0.5,CV_INTER_AREA);
 
    GaussianBlur(src2, src2, Size(5,5), 2, 2);
-   pyrMeanShiftFiltering( src2, res, 2, 45, 3);
+   pyrMeanShiftFiltering( src2, res, 5, 45, 3);
    //imwrite("meanshift.png", res);
     imshow( "Meanshift", res );
 
 
     ///////////////////////////////////////////////////////////////  Kmeans 
-  Mat samples(res.rows * res.cols, 3, CV_32F);
-  for( int y = 0; y < res.rows; y++ )
-    for( int x = 0; x < res.cols; x++ )
-      for( int z = 0; z < 3; z++)
-        samples.at<float>(y + x*res.rows, z) = res.at<Vec3b>(y,x)[z];
+  // Mat samples(res.rows * res.cols, 3, CV_32F);
+  // for( int y = 0; y < res.rows; y++ )
+  //   for( int x = 0; x < res.cols; x++ )
+  //     for( int z = 0; z < 3; z++)
+  //       samples.at<float>(y + x*res.rows, z) = res.at<Vec3b>(y,x)[z];
 
 
-  int clusterCount = 6;
-  Mat labels;
-  int attempts = 1;
-  Mat centers;
-  kmeans(samples, clusterCount, labels, TermCriteria(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS, 100, 0.01), attempts, KMEANS_PP_CENTERS, centers );
+  // int clusterCount = 6;
+  // Mat labels;
+  // int attempts = 1;
+  // Mat centers;
+  // kmeans(samples, clusterCount, labels, TermCriteria(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS, 100, 0.01), attempts, KMEANS_PP_CENTERS, centers );
 
 
-  Mat new_image( res.size(), res.type() );
-  for( int y = 0; y < res.rows; y++ )
-    for( int x = 0; x < res.cols; x++ )
-    { 
-      int cluster_idx = labels.at<int>(y + x*res.rows,0);
-      new_image.at<Vec3b>(y,x)[0] = centers.at<float>(cluster_idx, 0);
-      new_image.at<Vec3b>(y,x)[1] = centers.at<float>(cluster_idx, 1);
-      new_image.at<Vec3b>(y,x)[2] = centers.at<float>(cluster_idx, 2);
-    }
-   imshow( "clustered image", new_image );
+  // Mat new_image( res.size(), res.type() );
+  // for( int y = 0; y < res.rows; y++ )
+  //   for( int x = 0; x < res.cols; x++ )
+  //   { 
+  //     int cluster_idx = labels.at<int>(y + x*res.rows,0);
+  //     new_image.at<Vec3b>(y,x)[0] = centers.at<float>(cluster_idx, 0);
+  //     new_image.at<Vec3b>(y,x)[1] = centers.at<float>(cluster_idx, 1);
+  //     new_image.at<Vec3b>(y,x)[2] = centers.at<float>(cluster_idx, 2);
+  //   }
+  //  imshow( "clustered image", new_image );
 
   ////////////////////////////////////////////////////////////////////////////// HSV
 
-    cv::cvtColor(new_image, dst, CV_BGR2HSV);
+    cv::cvtColor(res, dst, CV_BGR2HSV);
 
       // eliminate shadows and to burned parts
     rgbd::ColorClusterSpace *ccs = rgbd::createSingleClusteredSpace(
@@ -333,7 +333,7 @@ public:
 
       Mat dst2, cdst2;
   // blackInBlack = cv::Mat(480, 640,CV_8UC3, cv::Scalar(0,0,0));
-  Canny(new_image, dst2, 150, 450, 3);
+  Canny(res, dst2, 50, 150, 3);
   //  cvtColor(dst2, cdst2, CV_GRAY2BGR);
 
   // vector<Vec4i> lines;
@@ -488,38 +488,38 @@ public:
           combined_image.at<uchar>(y,x) = 0;
       }
     }
-    cv::erode(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 2);
+    cv::erode(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 3);
 
 
 //// Hough
  
-  vector<Vec4i> lines;
-  HoughLinesP(combined_image, lines, 1, CV_PI/180, 50, 50, 10 );
+  // vector<Vec4i> lines;
+  // HoughLinesP(combined_image, lines, 1, CV_PI/180, 50, 50, 10 );
 
-  cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 6);
+   cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 2);
 
-   if(lines.empty())
-   {}
-   else
-   {
-    Vec4i l = lines[0];
-    for( int y = 0; y < bw.rows; y++ )
-    {
-      for( int x = 0; x < bw.cols; x++ )
-      {
-          if(new_image.at<Vec3b>(y,x)[0] == new_image.at<Vec3b>(Point(l[0],l[1]))[0] && new_image.at<Vec3b>(y,x)[1] == new_image.at<Vec3b>(Point(l[0],l[1]))[1] && new_image.at<Vec3b>(y,x)[2] == new_image.at<Vec3b>(Point(l[0],l[1]))[2])
-          combined_image.at<uchar>(y,x) = 255;
-          else if (new_image.at<Vec3b>(y,x)[0] == new_image.at<Vec3b>(Point(l[2],l[3]))[0] && new_image.at<Vec3b>(y,x)[1] == new_image.at<Vec3b>(Point(l[2],l[3]))[1] && new_image.at<Vec3b>(y,x)[2] == new_image.at<Vec3b>(Point(l[2],l[3]))[2])
-          combined_image.at<uchar>(y,x) = 255;
-          else
-          combined_image.at<uchar>(y,x) = 0;
-      }
-    }
-   }
+  //  if(lines.empty())
+  //  {}
+  //  else
+  //  {
+  //   Vec4i l = lines[0];
+  //   for( int y = 0; y < bw.rows; y++ )
+  //   {
+  //     for( int x = 0; x < bw.cols; x++ )
+  //     {
+  //         if(new_image.at<Vec3b>(y,x)[0] == new_image.at<Vec3b>(Point(l[0],l[1]))[0] && new_image.at<Vec3b>(y,x)[1] == new_image.at<Vec3b>(Point(l[0],l[1]))[1] && new_image.at<Vec3b>(y,x)[2] == new_image.at<Vec3b>(Point(l[0],l[1]))[2])
+  //         combined_image.at<uchar>(y,x) = 255;
+  //         else if (new_image.at<Vec3b>(y,x)[0] == new_image.at<Vec3b>(Point(l[2],l[3]))[0] && new_image.at<Vec3b>(y,x)[1] == new_image.at<Vec3b>(Point(l[2],l[3]))[1] && new_image.at<Vec3b>(y,x)[2] == new_image.at<Vec3b>(Point(l[2],l[3]))[2])
+  //         combined_image.at<uchar>(y,x) = 255;
+  //         else
+  //         combined_image.at<uchar>(y,x) = 0;
+  //     }
+  //   }
+  //  }
 
   imshow("Combined image", combined_image);
 
-  resize(combined_image,combined_image,Size(),2,2,CV_INTER_LANCZOS4);
+   resize(combined_image,combined_image,Size(),2,2,CV_INTER_LANCZOS4);
 
     // //cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 2);
 
