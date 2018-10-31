@@ -261,7 +261,15 @@ public:
     //                              objects,
     //                              *ccs);
 
+    //////////////////////////////////////////////////////////// Gabor filter
 
+    // Mat dest;
+    // int kernel_size = 31;
+    // double sig = 6, th = 0, lm = 12, gm = 1, ps = 50;
+    // cv::Mat kernel = cv::getGaborKernel(cv::Size(kernel_size,kernel_size), sig, th, lm, gm, ps);
+    // cv::filter2D(src, dest, CV_32F, kernel);
+
+    // imshow("gabor filter", dest);
 
     ///////////////////////////////////////////////////////////  Meanshift filtering
 
@@ -488,7 +496,7 @@ public:
   vector<Vec4i> lines;
   HoughLinesP(combined_image, lines, 1, CV_PI/180, 50, 50, 10 );
 
-  cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 4);
+  cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 6);
 
    if(lines.empty())
    {}
@@ -509,7 +517,7 @@ public:
     }
    }
 
- imshow("Combined image", combined_image);
+  imshow("Combined image", combined_image);
 
   resize(combined_image,combined_image,Size(),2,2,CV_INTER_LANCZOS4);
 
