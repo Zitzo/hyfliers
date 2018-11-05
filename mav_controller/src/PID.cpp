@@ -19,7 +19,7 @@
 
 #include "PID.h"
 #include <algorithm>
-//#include <std_msgs/Float32.h>
+#include <std_msgs/Float32.h>
 #include <thread>
 #include <chrono>
 
@@ -38,7 +38,7 @@ bool PID::enableRosInterface(std::string _tag)
 {
     if (ros::isInitialized())
     {
-        /*ros::NodeHandle np;
+        ros::NodeHandle np;
 
         mServiceKp = np.advertiseService(_tag + "/kp", &PID::serviceKp, this);
         mServiceKi = np.advertiseService(_tag + "/ki", &PID::serviceKi, this);
@@ -50,11 +50,11 @@ bool PID::enableRosInterface(std::string _tag)
         mPubKi = np.advertise<std_msgs::Float32>(_tag + "/ki", 1);
         mPubKd = np.advertise<std_msgs::Float32>(_tag + "/kd", 1);
         mPubSat = np.advertise<std_msgs::Float32>(_tag + "/saturation", 1);
-        mPubWind = np.advertise<std_msgs::Float32>(_tag + "/windup", 1);*/
+        mPubWind = np.advertise<std_msgs::Float32>(_tag + "/windup", 1);
 
         mParamPubThread = std::thread([&]() {
             while (ros::ok())
-            {/*
+            {
                 std_msgs::Float32 param;
 
                 param.data = mKp;
@@ -67,7 +67,7 @@ bool PID::enableRosInterface(std::string _tag)
                 mPubSat.publish(param);
                 param.data = mWindupMax;
                 mPubWind.publish(param);
-                std::this_thread::sleep_for(std::chrono::seconds(3));*/
+                std::this_thread::sleep_for(std::chrono::seconds(3));
             }
         });
         return true;

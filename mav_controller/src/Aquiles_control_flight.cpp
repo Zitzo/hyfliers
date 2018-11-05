@@ -33,7 +33,7 @@ std::mutex cinMutex;
 unsigned int state = -1;
 // unsigned int previous_state = -1;  // if necesary for more security
 ros::Time lastPoseTime;
-float reference_z = 3;
+float reference_z = 4.5;
 int security = -1;
 int kalman = 0;
 
@@ -156,8 +156,8 @@ int main(int _argc, char **_argv)
 		sleep(1);
 	}
 
-	PID px(1, 0.00, 0.0, -0.5, 0.5, -20, 20);
-	PID py(1, 0.00, 0.0, -0.5, 0.5, -20, 20);
+	PID px(0.8, 0.00, 0.0, -0.7, 0.7, -20, 20);
+	PID py(0.8, 0.00, 0.0, -0.7, 0.7, -20, 20);
 	PID pz(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
 	PID gz(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
 
@@ -204,13 +204,13 @@ int main(int _argc, char **_argv)
 		{ 
 			security= 0;
 			std::cout << "Initiating TakeOff" << std::endl;
-			double flight_level = 2;
+			double flight_level = 1;
 			ual.takeOff(flight_level);
 			std::cout << "TakeOff completed" << std::endl;
 			stateMutex.lock();
-			state = 2;
+			state =3;
 			stateMutex.unlock();
-			std::cout << "Changed state to GoToWaypoint mode" << std::endl;
+			std::cout << "Changed state to Control mode" << std::endl;
 		}
 		else if (state == 2) // GoToWaypoint mode
 		{
@@ -227,23 +227,23 @@ int main(int _argc, char **_argv)
 		{
 			security= 0;
 			auto rosTime = ros::Time::now();
-			if (abs(lastPoseTime.toSec() - rosTime.toSec()) > 0.5)
-			{
-				std::cout << "Not detected pipe in more than 0.5s. Changed state to GoToWayPoint" << std::endl;
-				stateMutex.lock();
-				state = 2;
-				stateMutex.unlock();
-			}
-			else
-			{
+			//if (abs(lastPoseTime.toSec() - rosTime.toSec()) > 2.0)
+			//{
+			//	std::cout << "Not detected pipe in more than 0.5s. Changed state to GoToWayPoint" << std::endl;
+			//	stateMutex.lock();
+			//	state = 3;
+			//	stateMutex.unlock();
+			//}
+			//else
+			//{
 				auto t1 = chrono::steady_clock::now();
 				float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() / 1000.0f;
 				t0 = t1;
 				float ux, uy, uz, az;
 				if (kalman == 0)
 				{
-					 ux = px.update(linx, incT);
-					 uy = py.update(liny, incT);
+					 ux = px.update(-liny, incT);
+					 uy = py.update(linx, incT);
 					 uz = pz.update(linz, incT);
 					 az = gz.update(angZ, incT);
 				}
@@ -255,14 +255,14 @@ int main(int _argc, char **_argv)
 					 az = gz.update(angZ_ekf, incT);	
 				}
 
-				geometry_msgs::TwistStamped msg = command_vel(uy, ux, uz, 0, 0, az); 
+				geometry_msgs::TwistStamped msg = command_vel(-uy,-ux, uz, 0, 0, az); 
 
 				geometry_msgs::PoseStamped msgref;
 				msgref.header.stamp = rosTime;
 				msgref.pose.position.x = px.reference();
 				msgref.pose.position.z = pz.reference();
 				msgref.pose.position.y = py.reference();
-				//msgref.pose.orientation.x = gz.reference();
+				msgref.pose.orientation.x = gz.reference();
 
 				geometry_msgs::PoseStamped msgpos;
 
@@ -270,8 +270,8 @@ int main(int _argc, char **_argv)
 				{
 					msgpos.header.stamp = rosTime;
 					msgpos.pose.position.x = -liny;
-					msgpos.pose.position.z = linz;
 					msgpos.pose.position.y = linx;
+					msgpos.pose.position.z = linz;
 					msgpos.pose.orientation.z = angZ;
 				}
 				else 
@@ -287,7 +287,7 @@ int main(int _argc, char **_argv)
 				ref_pub.publish(msgref);
 
 				ual.setVelocity(msg);
-			}
+			// }
 		}
 		else if (state == 4) // Reference change
 		{

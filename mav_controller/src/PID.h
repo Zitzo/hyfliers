@@ -22,7 +22,7 @@
 
 #include <limits>
 #include <ros/ros.h>
-//#include <mav_controller/Float32Param.h>
+#include <mav_controller/Float32Param.h>
 #include <thread>
 
 class PID
@@ -86,7 +86,7 @@ class PID
     }
 
   private:
-    /*bool serviceKp(mav_controller::Float32Param::Request &_req, mav_controller::Float32Param::Response &_res) { mKp = _req.param; };
+    bool serviceKp(mav_controller::Float32Param::Request &_req, mav_controller::Float32Param::Response &_res) { mKp = _req.param; };
     bool serviceKi(mav_controller::Float32Param::Request &_req, mav_controller::Float32Param::Response &_res) { mKi = _req.param; };
     bool serviceKd(mav_controller::Float32Param::Request &_req, mav_controller::Float32Param::Response &_res) { mKd = _req.param; };
     bool serviceKsat(mav_controller::Float32Param::Request &_req, mav_controller::Float32Param::Response &_res)
@@ -98,7 +98,7 @@ class PID
     {
         mWindupMin = -_req.param;
         mWindupMax = _req.param;
-    };*/
+    };
 
   private:
     float mReference;

@@ -164,8 +164,8 @@ public:
     //pipe_pub_ = n.advertise<geometry_msgs::Twist>("/pipe_pose", 1000);
 
     // Camera intrinsics
-    mIntrinsic << 726.429011, 0.0, 283.809411, // Parrot intrinsic parameters
-        0.0, 721.683494, 209.109682,
+    mIntrinsic << 617.8070678710938, 0.0, 326.96380615234375, // Parrot intrinsic parameters
+        0.0, 617.9169311523438, 241.34239196777344,
         0.0, 0.0, 1.0;
   }
 
@@ -280,7 +280,7 @@ public:
    GaussianBlur(src2, src2, Size(5,5), 2, 2);
    pyrMeanShiftFiltering( src2, res, 5, 45, 3);
    //imwrite("meanshift.png", res);
-    imshow( "Meanshift", res );
+   //imshow( "Meanshift", res );
 
 
     ///////////////////////////////////////////////////////////////  Kmeans 
@@ -344,8 +344,9 @@ public:
   //   line( cdst2, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 3, CV_AA);
   // }
 
- 
-   imshow("canny", dst2);
+ //imshow("source", src);
+  //imshow("canny", dst2);
+  // //imshow("detected lines", cdst2);
 
     ////////////////////////////////////////////////////////// Fill and Draw contours
 
@@ -442,7 +443,7 @@ public:
     }
 
 
-   imshow("Fill contours", drawing);
+  //imshow("Fill contours", drawing);
     /////////////////////////////////////////////////////////
 
     cv::cvtColor(dst, dst, CV_HSV2BGR);
@@ -456,9 +457,9 @@ public:
           ob.height());
       cv::rectangle(display, bb, cv::Scalar(0, 255, 0), 2);
     }
-    //imshow(window_name, dst);
-    //imshow(window_name + "_res", display);
-    cv::waitKey(3);
+    ////imshow(window_name, dst);
+    ////imshow(window_name + "_res", display);
+    //cv::waitKey(3);
 
     //Publish image
     cv_bridge::CvImage send(cv_ptr->header, cv_ptr->encoding, dst);
@@ -474,7 +475,7 @@ public:
     Mat bw;
     threshold(gray, bw, 50, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
 
-     imshow("BW", bw);
+    //imshow("BW", bw);
 
     ////////////////////////////////////////////////////// Combine of HSV and rest
     Mat combined_image( bw.size(), bw.type() );
@@ -517,12 +518,14 @@ public:
   //   }
   //  }
 
-  imshow("Combined image", combined_image);
+  ////imshow("Combined image", combined_image);
+    // //imshow("Combined image", combined_image);
 
    resize(combined_image,combined_image,Size(),2,2,CV_INTER_LANCZOS4);
 
     // //cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 2);
 
+    // //imshow("Complete image", complete_image);
 
     ///////////////////////////////////////////////////////////
 
@@ -535,7 +538,7 @@ public:
       // Calculate the area of each contour
       double area = contourArea(contours[i]);
       // Ignore contours that are too small or too large, MODIFIED AS PIPE IS A VERY LARGE OBJECT!!!
-      if (area < 1e3 || 1e8 < area)
+      if (area < 1e2 || 1e8 < area)
         continue;
       // Draw each contour only for visualisation purposes
       drawContours(src, contours, static_cast<int>(i), Scalar(0, 0, 255), 2, 8, hierarchy, 0);
@@ -581,9 +584,10 @@ public:
       ekf_pub_.publish(ekf_pipe_data);
       //float altitude = pipe_data.pose.position.z;
     }
-    imshow("output1", src);
-    //imshow("output2", gray);
-    //imshow("output3", bw);
+    //imshow("output1", src);
+    ////imshow("output2", gray);
+    ////imshow("output3", bw);
+    //cv::waitKey(3);
     // cv_image.image = src;
     // cv_image.enconding = cv_ptr->encoding;
     //cv::cvtColor(src, dst, CV_BGR2HSV);

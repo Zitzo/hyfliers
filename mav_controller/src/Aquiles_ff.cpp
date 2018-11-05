@@ -2,6 +2,7 @@
 #include <uav_abstraction_layer/ual.h>
 #include "std_msgs/Float64.h"
 #include <thread>
+#include <chrono>
 #include <stdlib.h>
 #include <opencv2/opencv.hpp>
 #include <unistd.h>
@@ -28,7 +29,7 @@ int main(int _argc, char **_argv)
     std::cout << "Arrived!" << std::endl;
 
     // Set linear velocity 2 seconds
-
+	
     geometry_msgs::TwistStamped msg;
 	msg.twist.linear.x = 1;
 	msg.twist.linear.y = 0;
@@ -36,8 +37,11 @@ int main(int _argc, char **_argv)
 	msg.twist.angular.z = 0;
 	msg.twist.angular.x = 0;
 	msg.twist.angular.y = 0;
-
-    ual.setVelocity(msg);
+	for(;;){
+		ual.setVelocity(msg);
+		std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	}
+    
 
     sleep(2);
 
