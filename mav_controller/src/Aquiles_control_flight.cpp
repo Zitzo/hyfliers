@@ -141,6 +141,7 @@ int main(int _argc, char **_argv)
 	ros::Publisher vel_pub = nh.advertise<geometry_msgs::TwistStamped>(nh.resolveName("cmd_vel"), 1);
 	ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 5);
 	ros::Publisher ref_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 5);
+	ros::Publisher vel_pub_mavros = nh.advertise<geometry_msgs::TwistStamped>("/mavros/setpoint_velocity/cmd_vel", 1);
 
 	std_msgs::Empty emp_msg;
 	geometry_msgs::TwistStamped constant_cmd_vel;
@@ -148,13 +149,13 @@ int main(int _argc, char **_argv)
 	ros::AsyncSpinner spinner(4);
 	spinner.start();
 
-	// INIT UAL
-	grvc::ual::UAL ual(_argc, _argv);
-	while (!ual.isReady() && ros::ok())
-	{
-		std::cout << "UAL not ready!" << std::endl;
-		sleep(1);
-	}
+	// // INIT UAL
+	// grvc::ual::UAL ual(_argc, _argv);
+	// while (!ual.isReady() && ros::ok())
+	// {
+	// 	std::cout << "UAL not ready!" << std::endl;
+	// 	sleep(1);
+	// }
 
 	PID px(0.8, 0.00, 0.0, -0.7, 0.7, -20, 20);
 	PID py(0.8, 0.00, 0.0, -0.7, 0.7, -20, 20);
@@ -171,11 +172,11 @@ int main(int _argc, char **_argv)
 	pz.enableRosInterface("/mav_controller/pid_z");
 
 	auto t0 = chrono::steady_clock::now();
-	grvc::ual::Waypoint home = ual.pose();   // It should go there if it loose the pipe
+	// grvc::ual::Waypoint home = ual.pose();   // It should go there if it loose the pipe
 
-	grvc::ual::Waypoint waypoint = ual.pose();  // Position on the pipe 
-	waypoint.pose.position.x += 1;
-	waypoint.pose.position.z += 4;
+	// grvc::ual::Waypoint waypoint = ual.pose();  // Position on the pipe 
+	// waypoint.pose.position.x += 1;
+	// waypoint.pose.position.z += 4;
 
 	bool run = true;
 
@@ -205,7 +206,7 @@ int main(int _argc, char **_argv)
 			security= 0;
 			std::cout << "Initiating TakeOff" << std::endl;
 			double flight_level = 1;
-			ual.takeOff(flight_level);
+			//ual.takeOff(flight_level);
 			std::cout << "TakeOff completed" << std::endl;
 			stateMutex.lock();
 			state =3;
@@ -215,8 +216,8 @@ int main(int _argc, char **_argv)
 		else if (state == 2) // GoToWaypoint mode
 		{
 			security= 1;
-			std::cout << "Going to waypoint at " << waypoint.pose.position.x << "," << waypoint.pose.position.y << "," << waypoint.pose.position.z << "," << std::endl;
-			ual.goToWaypoint(waypoint);
+			//std::cout << "Going to waypoint at " << waypoint.pose.position.x << "," << waypoint.pose.position.y << "," << waypoint.pose.position.z << "," << std::endl;
+			//ual.goToWaypoint(waypoint);
 			std::cout << "Arrived!" << std::endl;
 			stateMutex.lock();
 			state = 0;
@@ -285,8 +286,8 @@ int main(int _argc, char **_argv)
 				vel_pub.publish(msg);
 				pose_pub.publish(msgpos);
 				ref_pub.publish(msgref);
-
-				ual.setVelocity(msg);
+				vel_pub_mavros.publish(msg);
+				//ual.setVelocity(msg);
 			// }
 		}
 		else if (state == 4) // Reference change
@@ -309,7 +310,7 @@ int main(int _argc, char **_argv)
 		else if (state == 5) // Land on pipe
 		{
 			std::cout << "Landing on pipe" << std::endl;
-			ual.land();
+			//ual.land();
 			std::cout << "Landed" << std::endl;
 			security = 1;
 			std::cout << "Changing to repose mode" << std::endl;
@@ -321,9 +322,9 @@ int main(int _argc, char **_argv)
 		else if (state == 6) // secure Land mode on home 
 		{
 			std::cout << "Going home" << std::endl;
-			ual.goToWaypoint(home);
+			//ual.goToWaypoint(home);
 			std::cout << "Arrived home" << std::endl;
-			ual.land();
+			//ual.land();
 			std::cout << "Landed" << std::endl;
 			security = 1;
 			std::cout << "Changing to repose mode" << std::endl;
@@ -363,13 +364,13 @@ int main(int _argc, char **_argv)
 				std::cout << "Changing waypoint value";
 				std::cout << "X value of waypoint: ";
 			    std::cin >> wp_value;
-				waypoint.pose.position.x += wp_value;
+				//waypoint.pose.position.x += wp_value;
 				std::cout << "Y value of waypoint: ";
 			    std::cin >> wp_value;
-				waypoint.pose.position.y += wp_value;
+				//waypoint.pose.position.y += wp_value;
 				std::cout << "Z value of waypoint: ";
 			    std::cin >> wp_value;
-				waypoint.pose.position.z += wp_value;
+				//waypoint.pose.position.z += wp_value;
 				std::cout << "Changing to control mode" << std::endl;
 				stateMutex.lock();
 				state = 3;

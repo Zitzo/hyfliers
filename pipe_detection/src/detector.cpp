@@ -275,10 +275,10 @@ public:
 
    Mat res, src2;
    
-   resize(src,src2,Size(),0.5,0.5,CV_INTER_AREA);
+   resize(src,src2,Size(),0.625,0.625,CV_INTER_AREA);
 
    GaussianBlur(src2, src2, Size(5,5), 2, 2);
-   pyrMeanShiftFiltering( src2, res, 5, 45, 3);
+   pyrMeanShiftFiltering( src2, res, 4, 25, 3);
    //imwrite("meanshift.png", res);
    //imshow( "Meanshift", res );
 
@@ -521,7 +521,7 @@ public:
   ////imshow("Combined image", combined_image);
     // //imshow("Combined image", combined_image);
 
-   resize(combined_image,combined_image,Size(),2,2,CV_INTER_LANCZOS4);
+   resize(combined_image,combined_image,Size(),1.6,1.6,CV_INTER_LANCZOS4);
 
     // //cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 2);
 
@@ -538,7 +538,7 @@ public:
       // Calculate the area of each contour
       double area = contourArea(contours[i]);
       // Ignore contours that are too small or too large, MODIFIED AS PIPE IS A VERY LARGE OBJECT!!!
-      if (area < 1e2 || 1e8 < area)
+      if (area < 1e3 || 1e8 < area)
         continue;
       // Draw each contour only for visualisation purposes
       drawContours(src, contours, static_cast<int>(i), Scalar(0, 0, 255), 2, 8, hierarchy, 0);
