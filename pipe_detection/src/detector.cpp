@@ -275,11 +275,13 @@ public:
 
    Mat res, src2;
    
-   resize(src,src2,Size(),0.625,0.625,CV_INTER_AREA);
+   resize(src,src2,Size(),0.5,0.5,CV_INTER_AREA);
 
-   GaussianBlur(src2, src2, Size(5,5), 2, 2);
-   pyrMeanShiftFiltering( src2, res, 4, 25, 3);
+   GaussianBlur(src2, src2, Size(-1,-1), 2, 2);
+   pyrMeanShiftFiltering( src2, res, 4, 25, 1);
    //imwrite("meanshift.png", res);
+   // resize(res,res,Size(),1.25,1.25,CV_INTER_AREA);
+  //  resize(res,res,Size(),0.5,0.5,CV_INTER_AREA);
    //imshow( "Meanshift", res );
 
 
@@ -521,7 +523,7 @@ public:
   ////imshow("Combined image", combined_image);
     // //imshow("Combined image", combined_image);
 
-   resize(combined_image,combined_image,Size(),1.6,1.6,CV_INTER_LANCZOS4);
+   resize(combined_image,combined_image,Size(),2,2,CV_INTER_LANCZOS4);
 
     // //cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 2);
 

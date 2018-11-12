@@ -21,6 +21,9 @@
 #include <std_msgs/Empty.h>
 #include "std_msgs/Float64.h"
 #include <uav_abstraction_layer/ual.h>
+#include <mavros_msgs/CommandBool.h>
+#include <mavros_msgs/CommandTOL.h>
+#include <mavros_msgs/SetMode.h>
 
 using namespace cv;
 using namespace pcl;
@@ -142,7 +145,16 @@ int main(int _argc, char **_argv)
 	ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/pos", 5);
 	ros::Publisher ref_pub = nh.advertise<geometry_msgs::PoseStamped>("/mav_controller/reference", 5);
 	ros::Publisher vel_pub_mavros = nh.advertise<geometry_msgs::TwistStamped>("/mavros/setpoint_velocity/cmd_vel", 1);
+	ros::ServiceClient land_service;
+	land_service = nh.serviceClient<mavros_msgs::CommandTOL>("/mavros/cmd/land");
+	mavros_msgs::CommandTOL srv_land;
+    srv_land.request.altitude = 0;
+    srv_land.request.latitude = 0;
+    srv_land.request.longitude = 0;
+    srv_land.request.min_pitch = 0;
+    srv_land.request.yaw = 0;
 
+    
 	std_msgs::Empty emp_msg;
 	geometry_msgs::TwistStamped constant_cmd_vel;
 
@@ -157,10 +169,10 @@ int main(int _argc, char **_argv)
 	// 	sleep(1);
 	// }
 
-	PID px(0.8, 0.00, 0.0, -0.7, 0.7, -20, 20);
-	PID py(0.8, 0.00, 0.0, -0.7, 0.7, -20, 20);
+	PID px(0.6, 0.00, 0.3, -1.0, 1.0, -20, 20);
+	PID py(0.6, 0.00, 0.3, -1.0, 1.0, -20, 20);
 	PID pz(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
-	PID gz(0.2, 0.00, 0.0, -0.5, 0.5, -20, 20);
+	PID gz(0.2, 0.00, 0.1, -0.5, 0.5, -20, 20);
 
 	px.reference(0);
 	py.reference(0);
@@ -309,15 +321,20 @@ int main(int _argc, char **_argv)
 		}
 		else if (state == 5) // Land on pipe
 		{
-			std::cout << "Landing on pipe" << std::endl;
-			//ual.land();
-			std::cout << "Landed" << std::endl;
-			security = 1;
-			std::cout << "Changing to repose mode" << std::endl;
-			stateMutex.lock();
-			state = 0;
-			stateMutex.unlock();
-			std::cout << "Changed to repose mode" << std::endl;
+			// std::cout << "Landing on pipe" << std::endl;
+			// //ual.land();
+			// std::cout << "Landed" << std::endl;
+			// security = 1;
+			// std::cout << "Changing to repose mode" << std::endl;
+			// stateMutex.lock();
+			// state = 0;
+			// stateMutex.unlock();
+			// std::cout << "Changed to repose mode" << std::endl;
+			if(land_service.call(srv_land)){
+        		ROS_INFO("srv_land send ok %d", srv_land.response.success);
+    		}else{
+        		ROS_ERROR("Failed Land");
+    		}
 		}
 		else if (state == 6) // secure Land mode on home 
 		{
