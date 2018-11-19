@@ -26,11 +26,15 @@
 //#include <tf/transform_broadcaster.h>
 //#include <uav_abstraction_layer/ual.h>
 
+
+#include <rgbd_tools/object_detection/dnn/WrapperDarknet_cl.h>
+
 using namespace std;
 using namespace cv;
 unsigned t0, t1, t2, t3;
 Point pipe_center;
 Eigen::Quaternionf q;
+rgbd::WrapperDarknet_cl detector;
 
 // Function declarations for PCA
 void drawAxis(Mat &, Point, Point, Scalar, const float);
@@ -199,6 +203,14 @@ public:
     }
 
     cv::Mat src = cv_ptr->image;
+
+    auto detections = detector.detect(image);
+    //                xmin            ymin                    width                           height
+    cv::Rect rec(detection[0][2], detection[0][3], detection[0][4] -detection[0][2], detection[0][5]-detection[0][3]);
+    cv::Mat portionOfImage = src(rec).clone();
+    6666 <--- I know it!
+
+
     //cv::Mat img = cv::imread("/home/alejandro/pipe_detection/src/pipe_detection/src/out28.jpg", CV_LOAD_IMAGE_COLOR);
     //cv::waitkey(30);
     // sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", img).toImageMsg();
@@ -614,6 +626,12 @@ int main(int _argc, char** _argv)
     //cout << "pipe_detection initialized" << endl;
     ros::NodeHandle n("~");
     ImageProcessor im(n);
+
+    if(!detector.init(_argv[1], _argv[2])){
+        std::cout << "Failed initialization of network" << std::endl;
+        return -1;
+    }
+
 
     ros::spin();
      return 0;
