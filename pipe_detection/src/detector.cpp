@@ -204,10 +204,12 @@ public:
 
     cv::Mat src = cv_ptr->image;
 
-    auto detections = detector.detect(image);
-    //                xmin            ymin                    width                           height
-    cv::Rect rec(detection[0][2], detection[0][3], detection[0][4] -detection[0][2], detection[0][5]-detection[0][3]);
-    cv::Mat portionOfImage = src(rec).clone();
+    auto detections = detector.detect(src);
+    cv::Rect rec( detections[0][2], // xmin
+                  detections[0][3], // ymin
+                  detections[0][4] - detections[0][2], //width
+                  detections[0][5] - detections[0][3]); //height
+    cv::Mat portionOfImage = src(rec);
     6666 <--- I know it!
 
 
