@@ -35,6 +35,7 @@ unsigned t0, t1, t2, t3;
 Point pipe_center;
 Eigen::Quaternionf q;
 rgbd::WrapperDarknet_cl detector;
+int x_min, y_min;
 
 // Function declarations for PCA
 void drawAxis(Mat &, Point, Point, Scalar, const float);
@@ -210,26 +211,10 @@ public:
                   detections[0][4] - detections[0][2], //width
                   detections[0][5] - detections[0][3]); //height
     cv::Mat portionOfImage = src(rec);
-    6666 <--- I know it!
-
-
-    //cv::Mat img = cv::imread("/home/alejandro/pipe_detection/src/pipe_detection/src/out28.jpg", CV_LOAD_IMAGE_COLOR);
-    //cv::waitkey(30);
-    // sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", img).toImageMsg();
-
-    // Do something with img and store the result in send
-    //ROS_INFO("Callback");
-    t0 = clock();
-    /// Create a matrix of the same type and size as src (for dst)
-    dst.create(src.size(), src.type());
-
-    cv::cvtColor(src, src_gray, CV_BGR2GRAY);
-
-    /// Reduce noise with a kernel 3x3
-    blur(src_gray, detected_edges, cv::Size(5, 5));
-
-    // /// Canny detector
-    // Canny( detected_edges, detected_edges, lowThreshold, lowThreshold*ratio, kernel_size );
+    x_min = detections[0][2];
+    y_min = detections[0][3];
+    //6666 <--- I know it!
+    imshow("Portion image", portionOfImage);
 
     /// Using Canny's output as a mask, we display our result
     // dst = Scalar::all(0);
@@ -289,10 +274,10 @@ public:
 
    Mat res, src2;
    
-   resize(src,src2,Size(),0.5,0.5,CV_INTER_AREA);
+   resize(portionOfImage,src2,Size(),0.5,0.5,CV_INTER_AREA);
 
    GaussianBlur(src2, src2, Size(-1,-1), 2, 2);
-   pyrMeanShiftFiltering( src2, res, 4, 25, 1);
+   pyrMeanShiftFiltering(src2, res, 4, 25, 1);
    //imwrite("meanshift.png", res);
    // resize(res,res,Size(),1.25,1.25,CV_INTER_AREA);
   //  resize(res,res,Size(),0.5,0.5,CV_INTER_AREA);
@@ -534,10 +519,27 @@ public:
   //   }
   //  }
 
-  ////imshow("Combined image", combined_image);
-    // //imshow("Combined image", combined_image);
 
    resize(combined_image,combined_image,Size(),2,2,CV_INTER_LANCZOS4);
+
+  cv::erode(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 3);
+
+     Mat full_image;
+   full_image = Mat::zeros( src.size(), CV_8UC1);
+
+    for( int x = x_min; x < combined_image.rows; x++ )
+    {
+      for( int y = y_min; y < combined_image.cols; y++ )
+      {
+        if (combined_image.at<uchar>(y,x) == 255)
+          full_image.at<uchar>(y,x) = 255;
+        else
+          full_image.at<uchar>(y,x) = 0;
+      }
+    }
+
+  imshow ("Combined_image", combined_image);
+  imshow ("Full_image", full_image);
 
     // //cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 2);
 
@@ -548,7 +550,7 @@ public:
     // Find all the contours in the thresholded image
     vector<Vec4i> hierarchy;
     vector<vector<Point>> contours;
-    findContours(combined_image, contours, hierarchy, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+    findContours(full_image, contours, hierarchy, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
     for (size_t i = 0; i < contours.size(); ++i)
     {
       // Calculate the area of each contour
@@ -600,7 +602,7 @@ public:
       ekf_pub_.publish(ekf_pipe_data);
       //float altitude = pipe_data.pose.position.z;
     }
-    //imshow("output1", src);
+    imshow("output1", src);
     ////imshow("output2", gray);
     ////imshow("output3", bw);
     //cv::waitKey(3);
