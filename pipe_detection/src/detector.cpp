@@ -35,7 +35,9 @@ unsigned t0, t1, t2, t3;
 Point pipe_center;
 Eigen::Quaternionf q;
 rgbd::WrapperDarknet_cl detector;
-int x_min, y_min;
+int x_min, y_min, width, height;
+cv::Mat current_depth_msg;
+sensor_msgs::Image image_depth_msg;
 
 // Function declarations for PCA
 void drawAxis(Mat &, Point, Point, Scalar, const float);
@@ -43,6 +45,7 @@ double getOrientation(const vector<Point> &, vector<Point> &, vector<Point> &, M
 //void ual_init(int, char**);
 
 // Functions
+
 
 void drawAxis(Mat &img, Point p, Point q, Scalar colour, const float scale = 0.2)
 {
@@ -79,6 +82,33 @@ double getOrientation(const vector<Point> &pts, vector<double> &pipeCentroid, ve
   //Store the center of the object
   Point cntr = Point(static_cast<int>(pca_analysis.mean.at<double>(0, 0)),
                      static_cast<int>(pca_analysis.mean.at<double>(0, 1)));
+
+
+  // int points = 10;
+  // double output_x[points] {}, output_y[points] {}; 
+
+  // double sum_x = 0;
+  // double sum_y = 0;
+  // for(int i = points - 1; i < 0; --i)
+  // {
+  //     output_x[i] = output_x[i-1];
+  //      sum_x += output_x[i];
+  //      output_y[i] = output_y[i-1];
+  //      sum_y += output_y[i];
+  //  }
+  //  sum_x += cntr.x;
+  //  sum_y += cntr.y;
+  //  output_x[0] = cntr.x;
+  //  output_y[0] = cntr.y;
+
+  
+  // cntr.x = sum_x/points + x_min;
+  // cntr.y = sum_y/points + y_min;
+
+  cntr.x = cntr.x + x_min;
+  cntr.y = cntr.y + y_min;
+
+
   pipe_center.x = cntr.x;
   pipe_center.y = cntr.y;
   //Store the eigenvalues and eigenvectors
@@ -148,21 +178,20 @@ class ImageProcessor
   ros::Publisher ekf_pub_;
   ros::Subscriber alt_sub_;
   ros::Publisher detector_pub;
+  image_transport::Subscriber img_depth_sub_;
   //cv_bridge::CvImage cv_image;
   // tf::TransformBroadcaster tf_br_;
 public:
   ImageProcessor(ros::NodeHandle &n) : nh_(n),
                                        it_(nh_)
   {
-    //img_sub_ = it_.subscribe("/aeroarms_1/camera_0/image_raw", 1, &ImageProcessor::image_callback, this);  //simulation
-    img_sub_ = it_.subscribe("/camera/image", 1, &ImageProcessor::image_callback, this);  //real
-    //img_sub_ = it_.subscribe("/camera/image", 1, &ImageProcessor::image_callback, this);  // old real
-   // sub_alt_ = n.subscribe("/ardrone/navdata", 1000, altitude_Callback);
+    //img_sub_ = it_.subscribe("/camera/color/image_raw", 1, &ImageProcessor::image_callback, this);  //real
+    img_sub_ = it_.subscribe("/camera/image", 1, &ImageProcessor::image_callback, this);  // old real
+    img_depth_sub_ = it_.subscribe("/camera/image_depth", 1, &ImageProcessor::image_depth_callback, this);
     img_pub_ = it_.advertise("/output_image_bw", 1);
     img_pub2_ = it_.advertise("/image_detector", 1);
     pipe_pub_ = n.advertise<geometry_msgs::PoseStamped>("/pipe_pose", 1000);
     ekf_pub_ = n.advertise<geometry_msgs::PoseStamped>("/ekf/pipe_pose", 1);
-    //alt_sub_ = n.subscribe("/uav_1/mavros/local_position/pose", 1000, IMUCallback); //simulation
     alt_sub_ = n.subscribe("/mavros/local_position/pose", 1000, IMUCallback);   //real
     detector_pub = n.advertise<sensor_msgs::Image>("/Detector_Image",1);
 
@@ -190,6 +219,23 @@ public:
   //  }
  // }
 
+  void image_depth_callback(const sensor_msgs::ImageConstPtr &depth_msg)
+ {
+   cv_bridge::CvImagePtr cv_ptr_depth;
+    image_depth_msg = *depth_msg;  
+    try
+    {
+      cv_ptr_depth = cv_bridge::toCvCopy(depth_msg, depth_msg->encoding);
+    }
+    catch (cv_bridge::Exception &e)
+    {
+      ROS_ERROR("cv_bridge exception: %s", e.what());
+      return;
+    }
+
+    current_depth_msg = cv_ptr_depth->image; 
+ }
+
   void image_callback(const sensor_msgs::ImageConstPtr &msg)
   {
     cv_bridge::CvImagePtr cv_ptr;
@@ -203,9 +249,13 @@ public:
       return;
     }
 
+    // auto t00 = std::chrono::high_resolution_clock::now();
     cv::Mat src = cv_ptr->image;
-
     auto detections = detector.detect(src);
+    if(detections.size() == 0)
+      return;
+
+    // auto t01 = std::chrono::high_resolution_clock::now();
     cv::Rect rec( detections[0][2], // xmin
                   detections[0][3], // ymin
                   detections[0][4] - detections[0][2], //width
@@ -213,9 +263,15 @@ public:
     cv::Mat portionOfImage = src(rec);
     x_min = detections[0][2];
     y_min = detections[0][3];
-    //6666 <--- I know it!
-    imshow("Portion image", portionOfImage);
+    width = detections[0][4] - detections[0][2];
+    height = detections[0][5] - detections[0][3];
 
+    //6666 <--- I know it!
+    // float time = std::chrono::duration_cast<std::chrono::milliseconds>(t01-t00).count();
+  //   std::cout  << "time: " << time << ". FPS: " << 1/(time/1000.0) << std::endl;
+     imshow("Portion image", portionOfImage);
+  //   cv::waitKey(3);
+  // return;
     /// Using Canny's output as a mask, we display our result
     // dst = Scalar::all(0);
     // cv::cvtColor(src, dst, CV_BGR2HSV);
@@ -274,9 +330,9 @@ public:
 
    Mat res, src2;
    
-   resize(portionOfImage,src2,Size(),0.5,0.5,CV_INTER_AREA);
+  //  resize(portionOfImage,src2,Size(),0.5,0.5,CV_INTER_AREA);
 
-   GaussianBlur(src2, src2, Size(-1,-1), 2, 2);
+   GaussianBlur(portionOfImage, src2, Size(-1,-1), 2, 2);
    pyrMeanShiftFiltering(src2, res, 4, 25, 1);
    //imwrite("meanshift.png", res);
    // resize(res,res,Size(),1.25,1.25,CV_INTER_AREA);
@@ -346,7 +402,7 @@ public:
   // }
 
  //imshow("source", src);
-  //imshow("canny", dst2);
+  imshow("canny", dst2);
   // //imshow("detected lines", cdst2);
 
     ////////////////////////////////////////////////////////// Fill and Draw contours
@@ -490,57 +546,70 @@ public:
           combined_image.at<uchar>(y,x) = 0;
       }
     }
-    cv::erode(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 3);
+    cv::erode(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 4);
 
 
-//// Hough
+
+   cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 3);
+
  
-  // vector<Vec4i> lines;
-  // HoughLinesP(combined_image, lines, 1, CV_PI/180, 50, 50, 10 );
 
-   cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 2);
+    //  resize(combined_image,combined_image,Size(),2,2,CV_INTER_LANCZOS4);
 
-  //  if(lines.empty())
-  //  {}
-  //  else
-  //  {
-  //   Vec4i l = lines[0];
-  //   for( int y = 0; y < bw.rows; y++ )
-  //   {
-  //     for( int x = 0; x < bw.cols; x++ )
-  //     {
-  //         if(new_image.at<Vec3b>(y,x)[0] == new_image.at<Vec3b>(Point(l[0],l[1]))[0] && new_image.at<Vec3b>(y,x)[1] == new_image.at<Vec3b>(Point(l[0],l[1]))[1] && new_image.at<Vec3b>(y,x)[2] == new_image.at<Vec3b>(Point(l[0],l[1]))[2])
-  //         combined_image.at<uchar>(y,x) = 255;
-  //         else if (new_image.at<Vec3b>(y,x)[0] == new_image.at<Vec3b>(Point(l[2],l[3]))[0] && new_image.at<Vec3b>(y,x)[1] == new_image.at<Vec3b>(Point(l[2],l[3]))[1] && new_image.at<Vec3b>(y,x)[2] == new_image.at<Vec3b>(Point(l[2],l[3]))[2])
-  //         combined_image.at<uchar>(y,x) = 255;
-  //         else
-  //         combined_image.at<uchar>(y,x) = 0;
-  //     }
-  //   }
-  //  }
+    //cv::erode(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 3);
 
+    imshow ("Combined_image", combined_image);
 
-   resize(combined_image,combined_image,Size(),2,2,CV_INTER_LANCZOS4);
+    ///////////////////////////////////////////////////// Depth
 
-  cv::erode(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 3);
-
-     Mat full_image;
-   full_image = Mat::zeros( src.size(), CV_8UC1);
-
-    for( int x = x_min; x < combined_image.rows; x++ )
+    float sumatory = 0;
+    float num_pixel = 0;
+    for (int length = 0; length < combined_image.rows; length++)
     {
-      for( int y = y_min; y < combined_image.cols; y++ )
-      {
-        if (combined_image.at<uchar>(y,x) == 255)
-          full_image.at<uchar>(y,x) = 255;
-        else
-          full_image.at<uchar>(y,x) = 0;
-      }
+        for (int width = 0; width < combined_image.cols; width++)
+        {
+            if(combined_image.at<uchar>(length,width) == 255)
+            {
+                if (current_depth_msg.at<uint16_t>(length + x_min, width + y_min) != 0)
+                {
+                sumatory += current_depth_msg.at<uint16_t>(length + x_min, width + y_min);
+                num_pixel++;
+                }
+            }
+        }
     }
 
-  imshow ("Combined_image", combined_image);
-  imshow ("Full_image", full_image);
 
+    float depth_alt_med = 0; 
+    int marcador = 0;
+    if (num_pixel > 0)
+    {    
+      
+    depth_alt_med = (sumatory/num_pixel)*1.0000000474974513;    //e-03;
+
+     cout << "Pixeles: " << num_pixel << std::endl;
+      cout << "Altura_media: " << depth_alt_med << std::endl;
+    for (int length = 0; length < combined_image.rows; length++)
+      {
+        for (int width = 0; width < combined_image.cols; width++)
+        {   
+          if(combined_image.at<uint16_t>(length,width) == 255)
+            {
+                if (current_depth_msg.at<uint16_t>(length + x_min, width + y_min) > depth_alt_med)
+                { 
+                    // cout << "Eliminando suelo" << std::endl;
+                    combined_image.at<uchar>(length,width) = 0;
+                    marcador += 1;
+                }
+            }
+          // else 
+          //       if (current_depth_msg.at<uint16_t>(length + x_min, width + y_min) != 0 && current_depth_msg.at<uint16_t>(length + x_min, width + y_min) < depth_alt_med*1000)
+          //           combined_image.at<uchar>(length,width) = 255;
+        }
+      }
+    }
+    cout << "Puntos eliminados: " << marcador << std::endl;
+    imshow ("Combined_image_depth", combined_image);
     // //cv::dilate(combined_image, combined_image, cv::Mat(), cv::Point(-1,-1), 2);
 
     // //imshow("Complete image", complete_image);
@@ -550,7 +619,7 @@ public:
     // Find all the contours in the thresholded image
     vector<Vec4i> hierarchy;
     vector<vector<Point>> contours;
-    findContours(full_image, contours, hierarchy, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+    findContours(combined_image, contours, hierarchy, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
     for (size_t i = 0; i < contours.size(); ++i)
     {
       // Calculate the area of each contour
@@ -605,7 +674,7 @@ public:
     imshow("output1", src);
     ////imshow("output2", gray);
     ////imshow("output3", bw);
-    //cv::waitKey(3);
+    cv::waitKey(3);
     // cv_image.image = src;
     // cv_image.enconding = cv_ptr->encoding;
     //cv::cvtColor(src, dst, CV_BGR2HSV);
