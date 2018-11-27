@@ -564,41 +564,30 @@ public:
 
     float sumatory = 0;
     float num_pixel = 0;
-    for (int length = 0; length < combined_image.rows; length++)
-    {
-        for (int width = 0; width < combined_image.cols; width++)
-        {
-            if(combined_image.at<uchar>(length,width) == 255)
-            {
-                if (current_depth_msg.at<uint16_t>(length + x_min, width + y_min) != 0)
-                {
-                sumatory += current_depth_msg.at<uint16_t>(length + x_min, width + y_min);
-                num_pixel++;
+    for (int row = 0; row < combined_image.rows; row++) {
+        for (int col = 0; col < combined_image.cols; col++) {
+            if(combined_image.at<uchar>(row,col) == 255) {
+                if (current_depth_msg.at<uint16_t>(row + y_min, col + x_min) != 0) {
+                  sumatory += current_depth_msg.at<uint16_t>(row + y_min, col + x_min);
+                  num_pixel++;
                 }
             }
         }
     }
 
-
     float depth_alt_med = 0; 
     int marcador = 0;
-    if (num_pixel > 0)
-    {    
-      
-    depth_alt_med = (sumatory/num_pixel)*1.0000000474974513;    //e-03;
+    if (num_pixel > 0) {        
+      depth_alt_med = (sumatory/num_pixel)*1.0000000474974513;    //e-03;
 
-     cout << "Pixeles: " << num_pixel << std::endl;
+      cout << "Pixeles: " << num_pixel << std::endl;
       cout << "Altura_media: " << depth_alt_med << std::endl;
-    for (int length = 0; length < combined_image.rows; length++)
-      {
-        for (int width = 0; width < combined_image.cols; width++)
-        {   
-          if(combined_image.at<uint16_t>(length,width) == 255)
-            {
-                if (current_depth_msg.at<uint16_t>(length + x_min, width + y_min) > depth_alt_med)
-                { 
+      for (int row = 0; row < combined_image.rows; row++) {
+        for (int col = 0; col < combined_image.cols; col++){   
+          if(combined_image.at<uint16_t>(row,col) == 255) {
+                if (current_depth_msg.at<uint16_t>(row + y_min, col + x_min) > depth_alt_med){ 
                     // cout << "Eliminando suelo" << std::endl;
-                    combined_image.at<uchar>(length,width) = 0;
+                    combined_image.at<uchar>(row,col) = 0;
                     marcador += 1;
                 }
             }

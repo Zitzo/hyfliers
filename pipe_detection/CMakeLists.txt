@@ -15,8 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   				argument_parser 
  				geometry_msgs 
  				std_msgs
- 				roscpp 
-				
+ 				roscpp 				
 )
 
 find_package(OpenCV 3 REQUIRED)
